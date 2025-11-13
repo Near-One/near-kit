@@ -3,6 +3,7 @@
  */
 
 import { ed25519 } from "@noble/curves/ed25519.js"
+import { base58 } from "@scure/base"
 import { HDKey } from "@scure/bip32"
 import * as bip39 from "@scure/bip39"
 import { wordlist } from "@scure/bip39/wordlists/english.js"
@@ -13,72 +14,6 @@ import {
   type PublicKey,
   type Signature,
 } from "../core/types.js"
-
-/**
- * Base58 encoding/decoding utilities
- */
-const BASE58_ALPHABET =
-  "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-
-function base58Encode(buffer: Uint8Array): string {
-  const digits = [0]
-
-  for (let i = 0; i < buffer.length; i++) {
-    let carry = buffer[i]!
-    for (let j = 0; j < digits.length; j++) {
-      carry += digits[j]! << 8
-      digits[j] = carry % 58
-      carry = (carry / 58) | 0
-    }
-
-    while (carry > 0) {
-      digits.push(carry % 58)
-      carry = (carry / 58) | 0
-    }
-  }
-
-  let result = ""
-  for (let i = 0; i < buffer.length && buffer[i] === 0; i++) {
-    result += BASE58_ALPHABET[0]
-  }
-
-  for (let i = digits.length - 1; i >= 0; i--) {
-    result += BASE58_ALPHABET[digits[i]!]
-  }
-
-  return result
-}
-
-function base58Decode(str: string): Uint8Array {
-  const bytes = [0]
-
-  for (let i = 0; i < str.length; i++) {
-    const char = str[i]!
-    const value = BASE58_ALPHABET.indexOf(char)
-
-    if (value === -1) {
-      throw new Error(`Invalid base58 character: ${char}`)
-    }
-
-    let carry = value
-    for (let j = 0; j < bytes.length; j++) {
-      carry += bytes[j]! * 58
-      bytes[j] = carry & 0xff
-      carry >>= 8
-    }
-
-    while (carry > 0) {
-      bytes.push(carry & 0xff)
-      carry >>= 8
-    }
-  }
-
-  for (let i = 0; i < str.length && str[i] === BASE58_ALPHABET[0]; i++) {
-    bytes.push(0)
-  }
-
-  return new Uint8Array(bytes.reverse())
-}
 
 /**
  * Ed25519 key pair implementation
@@ -96,10 +31,10 @@ class Ed25519KeyPair implements KeyPair {
     this.publicKey = {
       keyType: KeyType.ED25519,
       data: publicKeyData,
-      toString: () => ED25519_KEY_PREFIX + base58Encode(publicKeyData),
+      toString: () => ED25519_KEY_PREFIX + base58.encode(publicKeyData),
     }
 
-    this.secretKey = ED25519_KEY_PREFIX + base58Encode(secretKey)
+    this.secretKey = ED25519_KEY_PREFIX + base58.encode(secretKey)
   }
 
   sign(message: Uint8Array): Signature {
@@ -124,7 +59,7 @@ class Ed25519KeyPair implements KeyPair {
 
   static fromString(keyString: string): Ed25519KeyPair {
     const key = keyString.replace(ED25519_KEY_PREFIX, "")
-    const decoded = base58Decode(key)
+    const decoded = base58.decode(key)
     return new Ed25519KeyPair(decoded)
   }
 }
@@ -211,6 +146,7 @@ export function parseSeedPhrase(
 }
 
 /**
- * Encode binary data to base58
+ * Export base58 encoding utilities from @scure/base
  */
-export { base58Decode, base58Encode }
+export const base58Encode = base58.encode
+export const base58Decode = base58.decode

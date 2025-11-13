@@ -36,7 +36,7 @@ class FunctionCall {
     methodName: string,
     args: Uint8Array,
     gas: string,
-    deposit: string,
+    deposit: string
   ) {
     this.methodName = methodName
     this.args = args
@@ -96,7 +96,7 @@ export class TransactionBuilder {
     signerId: string,
     rpc: RpcClient,
     keyStore: KeyStore,
-    signer?: Signer,
+    signer?: Signer
   ) {
     this.signerId = signerId
     this.actions = []
@@ -132,7 +132,7 @@ export class TransactionBuilder {
     contractId: string,
     methodName: string,
     args: object = {},
-    options: { gas?: string | number; attachedDeposit?: string | number } = {},
+    options: { gas?: string | number; attachedDeposit?: string | number } = {}
   ): this {
     const argsJson = JSON.stringify(args)
     const argsBytes = new TextEncoder().encode(argsJson)
@@ -298,11 +298,11 @@ export class TransactionBuilder {
     const publicKey = keyPair.publicKey
     const accessKey = await this.rpc.getAccessKey(
       this.signerId,
-      publicKey.toString(),
+      publicKey.toString()
     )
 
     const status = await this.rpc.getStatus()
-    const blockHash = this.base58ToBytes(status.sync_info.latest_block_hash)
+    const blockHash = base58Decode(status.sync_info.latest_block_hash)
 
     const transaction: Transaction = {
       signerId: this.signerId,
@@ -368,9 +368,5 @@ export class TransactionBuilder {
     // Placeholder - proper implementation would use Borsh
     const encoder = new TextEncoder()
     return encoder.encode(JSON.stringify(signedTx))
-  }
-
-  private base58ToBytes(base58: string): Uint8Array {
-    return base58Decode(base58)
   }
 }
