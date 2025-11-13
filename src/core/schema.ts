@@ -1,10 +1,14 @@
 /**
  * Borsh serialization schemas for NEAR transactions using Zorsh
  * Based on NEAR Protocol specification and near-api-js implementation
+ *
+ * This module handles the low-level binary serialization details and keeps
+ * all Zorsh-specific types internal. External code should only use the
+ * serializeTransaction and serializeSignedTransaction functions.
  */
 
 import { b } from "@zorsh/zorsh"
-import type { PublicKey, Signature, Transaction, SignedTransaction } from "./types.js"
+import type { Action, PublicKey, Signature, Transaction, SignedTransaction } from "./types.js"
 
 // ==================== Public Key ====================
 
@@ -284,7 +288,7 @@ export const SignedTransactionSchema = b.struct({
 /**
  * Convert our PublicKey type to zorsh-compatible format
  */
-function publicKeyToZorsh(pk: PublicKey): any {
+function publicKeyToZorsh(pk: PublicKey) {
   if (pk.keyType === 0) {
     // Ed25519
     return { ed25519Key: { data: Array.from(pk.data) } }
@@ -297,7 +301,7 @@ function publicKeyToZorsh(pk: PublicKey): any {
 /**
  * Convert our Signature type to zorsh-compatible format
  */
-function signatureToZorsh(sig: Signature): any {
+function signatureToZorsh(sig: Signature) {
   if (sig.keyType === 0) {
     // Ed25519
     return { ed25519Signature: { data: Array.from(sig.data) } }
@@ -308,257 +312,141 @@ function signatureToZorsh(sig: Signature): any {
 }
 
 /**
+ * Convert an action to zorsh-compatible format
+ */
+function actionToZorsh(action: Action): b.infer<typeof ActionSchema> {
+  const actionType = action.enum as string
+  const actionData = action[actionType]
+
+  // Handle each action type
+  if (actionType === "createAccount") {
+    return { createAccount: {} }
+  } else if (actionType === "deployContract") {
+    return {
+      deployContract: {
+        code: (actionData as { code: Uint8Array }).code
+      }
+    }
+  } else if (actionType === "functionCall") {
+    const fc = actionData as { methodName: string; args: Uint8Array; gas: bigint; deposit: bigint }
+    return {
+      functionCall: {
+        methodName: fc.methodName,
+        args: fc.args,
+        gas: fc.gas,
+        deposit: fc.deposit,
+      }
+    }
+  } else if (actionType === "transfer") {
+    return {
+      transfer: {
+        deposit: (actionData as { deposit: bigint }).deposit
+      }
+    }
+  } else if (actionType === "stake") {
+    const stake = actionData as { stake: bigint; publicKey: PublicKey }
+    return {
+      stake: {
+        stake: stake.stake,
+        publicKey: publicKeyToZorsh(stake.publicKey),
+      }
+    }
+  } else if (actionType === "addKey") {
+    const addKey = actionData as { publicKey: PublicKey; accessKey: { nonce: bigint; permission: unknown } }
+    return {
+      addKey: {
+        publicKey: publicKeyToZorsh(addKey.publicKey),
+        accessKey: {
+          nonce: addKey.accessKey.nonce,
+          permission: addKey.accessKey.permission,
+        }
+      }
+    }
+  } else if (actionType === "deleteKey") {
+    const deleteKey = actionData as { publicKey: PublicKey }
+    return {
+      deleteKey: {
+        publicKey: publicKeyToZorsh(deleteKey.publicKey),
+      }
+    }
+  } else if (actionType === "deleteAccount") {
+    return {
+      deleteAccount: {
+        beneficiaryId: (actionData as { beneficiaryId: string }).beneficiaryId,
+      }
+    }
+  } else if (actionType === "signedDelegate") {
+    const signedDelegate = actionData as {
+      delegateAction: {
+        senderId: string
+        receiverId: string
+        actions: Action[]
+        nonce: bigint
+        maxBlockHeight: bigint
+        publicKey: PublicKey
+      }
+      signature: Signature
+    }
+    return {
+      signedDelegate: {
+        delegateAction: {
+          senderId: signedDelegate.delegateAction.senderId,
+          receiverId: signedDelegate.delegateAction.receiverId,
+          actions: signedDelegate.delegateAction.actions.map(actionToZorsh),
+          nonce: signedDelegate.delegateAction.nonce,
+          maxBlockHeight: signedDelegate.delegateAction.maxBlockHeight,
+          publicKey: publicKeyToZorsh(signedDelegate.delegateAction.publicKey),
+        },
+        signature: signatureToZorsh(signedDelegate.signature),
+      }
+    }
+  } else if (actionType === "deployGlobalContract") {
+    const deploy = actionData as { code: Uint8Array; deployMode: unknown }
+    return {
+      deployGlobalContract: {
+        code: deploy.code,
+        deployMode: deploy.deployMode,
+      }
+    }
+  } else if (actionType === "useGlobalContract") {
+    const use = actionData as { contractIdentifier: unknown }
+    return {
+      useGlobalContract: {
+        contractIdentifier: use.contractIdentifier,
+      }
+    }
+  }
+
+  throw new Error(`Unknown action type: ${actionType}`)
+}
+
+/**
  * Serialize a transaction to bytes
  */
 export function serializeTransaction(tx: Transaction): Uint8Array {
-  // Convert to zorsh-compatible format
-  const zorshTx: any = {
+  return TransactionSchema.serialize({
     signerId: tx.signerId,
     publicKey: publicKeyToZorsh(tx.publicKey),
     nonce: tx.nonce,
     receiverId: tx.receiverId,
     blockHash: Array.from(tx.blockHash),
-    actions: tx.actions.map((action): any => {
-      // Convert action to zorsh enum format
-      const actionType = action.enum as string
-      const actionData = action[actionType]
-
-      // Handle each action type
-      if (actionType === "createAccount") {
-        return { createAccount: {} }
-      } else if (actionType === "deployContract") {
-        return {
-          deployContract: {
-            code: Array.from((actionData as any).code)
-          }
-        }
-      } else if (actionType === "functionCall") {
-        const fc = actionData as any
-        return {
-          functionCall: {
-            methodName: fc.methodName,
-            args: Array.from(fc.args),
-            gas: fc.gas,
-            deposit: fc.deposit,
-          }
-        }
-      } else if (actionType === "transfer") {
-        return {
-          transfer: {
-            deposit: (actionData as any).deposit
-          }
-        }
-      } else if (actionType === "stake") {
-        const stake = actionData as any
-        return {
-          stake: {
-            stake: stake.stake,
-            publicKey: publicKeyToZorsh(stake.publicKey),
-          }
-        }
-      } else if (actionType === "addKey") {
-        const addKey = actionData as any
-        return {
-          addKey: {
-            publicKey: publicKeyToZorsh(addKey.publicKey),
-            accessKey: {
-              nonce: addKey.accessKey.nonce,
-              permission: addKey.accessKey.permission,
-            }
-          }
-        }
-      } else if (actionType === "deleteKey") {
-        const deleteKey = actionData as any
-        return {
-          deleteKey: {
-            publicKey: publicKeyToZorsh(deleteKey.publicKey),
-          }
-        }
-      } else if (actionType === "deleteAccount") {
-        return {
-          deleteAccount: {
-            beneficiaryId: (actionData as any).beneficiaryId,
-          }
-        }
-      } else if (actionType === "signedDelegate") {
-        const signedDelegate = actionData as any
-        return {
-          signedDelegate: {
-            delegateAction: {
-              senderId: signedDelegate.delegateAction.senderId,
-              receiverId: signedDelegate.delegateAction.receiverId,
-              actions: signedDelegate.delegateAction.actions.map((action: any) => {
-                // Recursively convert delegate actions
-                const type = action.enum
-                const data = action[type]
-                // Same conversion logic as above for classic actions
-                if (type === "createAccount") return { createAccount: {} }
-                if (type === "deployContract") return { deployContract: { code: Array.from(data.code) } }
-                if (type === "functionCall") return { functionCall: { methodName: data.methodName, args: Array.from(data.args), gas: data.gas, deposit: data.deposit } }
-                if (type === "transfer") return { transfer: { deposit: data.deposit } }
-                if (type === "stake") return { stake: { stake: data.stake, publicKey: publicKeyToZorsh(data.publicKey) } }
-                if (type === "addKey") return { addKey: { publicKey: publicKeyToZorsh(data.publicKey), accessKey: { nonce: data.accessKey.nonce, permission: data.accessKey.permission } } }
-                if (type === "deleteKey") return { deleteKey: { publicKey: publicKeyToZorsh(data.publicKey) } }
-                if (type === "deleteAccount") return { deleteAccount: { beneficiaryId: data.beneficiaryId } }
-                if (type === "deployGlobalContract") return { deployGlobalContract: { code: Array.from(data.code), deployMode: data.deployMode } }
-                if (type === "useGlobalContract") return { useGlobalContract: { contractIdentifier: data.contractIdentifier } }
-                throw new Error(`Unknown delegate action type: ${type}`)
-              }),
-              nonce: signedDelegate.delegateAction.nonce,
-              maxBlockHeight: signedDelegate.delegateAction.maxBlockHeight,
-              publicKey: publicKeyToZorsh(signedDelegate.delegateAction.publicKey),
-            },
-            signature: signatureToZorsh(signedDelegate.signature),
-          }
-        }
-      } else if (actionType === "deployGlobalContract") {
-        const deploy = actionData as any
-        return {
-          deployGlobalContract: {
-            code: Array.from(deploy.code),
-            deployMode: deploy.deployMode, // Already in enum format
-          }
-        }
-      } else if (actionType === "useGlobalContract") {
-        const use = actionData as any
-        return {
-          useGlobalContract: {
-            contractIdentifier: use.contractIdentifier, // Already in enum format
-          }
-        }
-      }
-
-      throw new Error(`Unknown action type: ${actionType}`)
-    }),
-  }
-
-  return TransactionSchema.serialize(zorshTx)
+    actions: tx.actions.map(actionToZorsh),
+  })
 }
 
 /**
  * Serialize a signed transaction to bytes
  */
 export function serializeSignedTransaction(signedTx: SignedTransaction): Uint8Array {
-  const zorshSignedTx: any = {
+  return SignedTransactionSchema.serialize({
     transaction: {
       signerId: signedTx.transaction.signerId,
       publicKey: publicKeyToZorsh(signedTx.transaction.publicKey),
       nonce: signedTx.transaction.nonce,
       receiverId: signedTx.transaction.receiverId,
       blockHash: Array.from(signedTx.transaction.blockHash),
-      actions: signedTx.transaction.actions.map((action): any => {
-        const actionType = action.enum as string
-        const actionData = action[actionType]
-
-        if (actionType === "createAccount") {
-          return { createAccount: {} }
-        } else if (actionType === "deployContract") {
-          return {
-            deployContract: {
-              code: Array.from((actionData as any).code)
-            }
-          }
-        } else if (actionType === "functionCall") {
-          const fc = actionData as any
-          return {
-            functionCall: {
-              methodName: fc.methodName,
-              args: Array.from(fc.args),
-              gas: fc.gas,
-              deposit: fc.deposit,
-            }
-          }
-        } else if (actionType === "transfer") {
-          return {
-            transfer: {
-              deposit: (actionData as any).deposit
-            }
-          }
-        } else if (actionType === "stake") {
-          const stake = actionData as any
-          return {
-            stake: {
-              stake: stake.stake,
-              publicKey: publicKeyToZorsh(stake.publicKey),
-            }
-          }
-        } else if (actionType === "addKey") {
-          const addKey = actionData as any
-          return {
-            addKey: {
-              publicKey: publicKeyToZorsh(addKey.publicKey),
-              accessKey: {
-                nonce: addKey.accessKey.nonce,
-                permission: addKey.accessKey.permission,
-              }
-            }
-          }
-        } else if (actionType === "deleteKey") {
-          const deleteKey = actionData as any
-          return {
-            deleteKey: {
-              publicKey: publicKeyToZorsh(deleteKey.publicKey),
-            }
-          }
-        } else if (actionType === "deleteAccount") {
-          return {
-            deleteAccount: {
-              beneficiaryId: (actionData as any).beneficiaryId,
-            }
-          }
-        } else if (actionType === "signedDelegate") {
-          const signedDelegate = actionData as any
-          return {
-            signedDelegate: {
-              delegateAction: {
-                senderId: signedDelegate.delegateAction.senderId,
-                receiverId: signedDelegate.delegateAction.receiverId,
-                actions: signedDelegate.delegateAction.actions.map((action: any) => {
-                  // Recursively convert delegate actions
-                  const type = action.enum
-                  const data = action[type]
-                  // Same conversion logic as above for classic actions
-                  if (type === "createAccount") return { createAccount: {} }
-                  if (type === "deployContract") return { deployContract: { code: Array.from(data.code) } }
-                  if (type === "functionCall") return { functionCall: { methodName: data.methodName, args: Array.from(data.args), gas: data.gas, deposit: data.deposit } }
-                  if (type === "transfer") return { transfer: { deposit: data.deposit } }
-                  if (type === "stake") return { stake: { stake: data.stake, publicKey: publicKeyToZorsh(data.publicKey) } }
-                  if (type === "addKey") return { addKey: { publicKey: publicKeyToZorsh(data.publicKey), accessKey: { nonce: data.accessKey.nonce, permission: data.accessKey.permission } } }
-                  if (type === "deleteKey") return { deleteKey: { publicKey: publicKeyToZorsh(data.publicKey) } }
-                  if (type === "deleteAccount") return { deleteAccount: { beneficiaryId: data.beneficiaryId } }
-                  if (type === "deployGlobalContract") return { deployGlobalContract: { code: Array.from(data.code), deployMode: data.deployMode } }
-                  if (type === "useGlobalContract") return { useGlobalContract: { contractIdentifier: data.contractIdentifier } }
-                  throw new Error(`Unknown delegate action type: ${type}`)
-                }),
-                nonce: signedDelegate.delegateAction.nonce,
-                maxBlockHeight: signedDelegate.delegateAction.maxBlockHeight,
-                publicKey: publicKeyToZorsh(signedDelegate.delegateAction.publicKey),
-              },
-              signature: signatureToZorsh(signedDelegate.signature),
-            }
-          }
-        } else if (actionType === "deployGlobalContract") {
-          const deploy = actionData as any
-          return {
-            deployGlobalContract: {
-              code: Array.from(deploy.code),
-              deployMode: deploy.deployMode, // Already in enum format
-            }
-          }
-        } else if (actionType === "useGlobalContract") {
-          const use = actionData as any
-          return {
-            useGlobalContract: {
-              contractIdentifier: use.contractIdentifier, // Already in enum format
-            }
-          }
-        }
-
-        throw new Error(`Unknown action type: ${actionType}`)
-      }),
+      actions: signedTx.transaction.actions.map(actionToZorsh),
     },
     signature: signatureToZorsh(signedTx.signature),
-  }
-
-  return SignedTransactionSchema.serialize(zorshSignedTx)
+  })
 }
