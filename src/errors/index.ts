@@ -54,7 +54,9 @@ export class FunctionCallError extends NearError {
     this.name = 'FunctionCallError';
     this.contractId = contractId;
     this.methodName = methodName;
-    this.panic = panic;
+    if (panic !== undefined) {
+      this.panic = panic;
+    }
     Object.setPrototypeOf(this, FunctionCallError.prototype);
   }
 }
@@ -69,7 +71,9 @@ export class NetworkError extends NearError {
   constructor(message: string, statusCode?: number, retryable = true) {
     super(message, 'NETWORK_ERROR', { statusCode });
     this.name = 'NetworkError';
-    this.statusCode = statusCode;
+    if (statusCode !== undefined) {
+      this.statusCode = statusCode;
+    }
     this.retryable = retryable;
     Object.setPrototypeOf(this, NetworkError.prototype);
   }
