@@ -4,6 +4,7 @@
 
 // Main class
 export { Near } from './core/near.js';
+export { TransactionBuilder } from './core/transaction.js';
 
 // Types
 export type {

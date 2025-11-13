@@ -3,19 +3,18 @@
  */
 
 import { RpcClient } from './rpc.js';
-import { NETWORK_PRESETS, DEFAULT_FUNCTION_CALL_GAS } from './constants.js';
+import { NETWORK_PRESETS } from './constants.js';
 import {
   NearConfig,
   NetworkConfig,
   KeyStore,
   CallOptions,
-  KeyPair,
   Signer,
 } from './types.js';
 import { InMemoryKeyStore } from '../keys/index.js';
-import { parseNearAmount, parseGas } from '../utils/format.js';
 import { parseKey } from '../utils/key.js';
 import { AccountDoesNotExistError, NetworkError } from '../errors/index.js';
+import { TransactionBuilder } from './transaction.js';
 
 export class Near {
   private rpc: RpcClient;
@@ -62,7 +61,7 @@ export class Near {
   } {
     // Default to mainnet
     if (!network) {
-      const envNetwork = process.env.NEAR_NETWORK;
+      const envNetwork = process.env['NEAR_NETWORK'];
       if (envNetwork && envNetwork in NETWORK_PRESETS) {
         return NETWORK_PRESETS[envNetwork as keyof typeof NETWORK_PRESETS];
       }
@@ -134,8 +133,16 @@ export class Near {
     args: object = {},
     options: CallOptions = {}
   ): Promise<T> {
-    // This is a placeholder - full implementation requires transaction building
-    throw new Error('call() method requires TransactionBuilder implementation');
+    const signerId = options.signerId || this.defaultSignerId;
+    if (!signerId) {
+      throw new Error('No signer ID provided. Set signerId in options or config.');
+    }
+
+    const result = await this.transaction(signerId)
+      .functionCall(contractId, methodName, args, options)
+      .send();
+
+    return result as T;
   }
 
   /**
@@ -145,10 +152,13 @@ export class Near {
     receiverId: string,
     amount: string | number
   ): Promise<unknown> {
-    const amountYocto = parseNearAmount(amount.toString());
+    if (!this.defaultSignerId) {
+      throw new Error('No signer ID configured. Cannot send tokens.');
+    }
 
-    // This is a placeholder - full implementation requires transaction building
-    throw new Error('send() method requires TransactionBuilder implementation');
+    return await this.transaction(this.defaultSignerId)
+      .transfer(receiverId, amount)
+      .send();
   }
 
   /**
@@ -211,17 +221,16 @@ export class Near {
 
   /**
    * Create a transaction builder
-   * (To be implemented in TransactionBuilder class)
    */
-  transaction(signerId: string): unknown {
-    throw new Error('transaction() requires TransactionBuilder implementation');
+  transaction(signerId: string): TransactionBuilder {
+    return new TransactionBuilder(signerId, this.rpc, this.keyStore, this.signer);
   }
 
   /**
    * Create a type-safe contract interface
    * (To be implemented in Contract class)
    */
-  contract<T>(contractId: string): T {
+  contract<T>(_contractId: string): T {
     throw new Error('contract() requires Contract implementation');
   }
 }
