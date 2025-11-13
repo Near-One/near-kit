@@ -3,17 +3,18 @@
  */
 
 import { parseGas, parseNearAmount } from "../utils/format.js"
+import { base58Decode } from "../utils/key.js"
 import { DEFAULT_FUNCTION_CALL_GAS } from "./constants.js"
 import type { RpcClient } from "./rpc.js"
-import {
-  type Action,
-  type FinalExecutionOutcome,
-  type KeyStore,
-  type PublicKey,
-  type SignedTransaction,
-  type Signer,
-  type SimulationResult,
-  type Transaction,
+import type {
+  Action,
+  FinalExecutionOutcome,
+  KeyStore,
+  PublicKey,
+  SignedTransaction,
+  Signer,
+  SimulationResult,
+  Transaction,
 } from "./types.js"
 
 // Borsh schema for transaction actions
@@ -35,7 +36,7 @@ class FunctionCall {
     methodName: string,
     args: Uint8Array,
     gas: string,
-    deposit: string
+    deposit: string,
   ) {
     this.methodName = methodName
     this.args = args
@@ -95,7 +96,7 @@ export class TransactionBuilder {
     signerId: string,
     rpc: RpcClient,
     keyStore: KeyStore,
-    signer?: Signer
+    signer?: Signer,
   ) {
     this.signerId = signerId
     this.actions = []
@@ -131,7 +132,7 @@ export class TransactionBuilder {
     contractId: string,
     methodName: string,
     args: object = {},
-    options: { gas?: string | number; attachedDeposit?: string | number } = {}
+    options: { gas?: string | number; attachedDeposit?: string | number } = {},
   ): this {
     const argsJson = JSON.stringify(args)
     const argsBytes = new TextEncoder().encode(argsJson)
@@ -297,7 +298,7 @@ export class TransactionBuilder {
     const publicKey = keyPair.publicKey
     const accessKey = await this.rpc.getAccessKey(
       this.signerId,
-      publicKey.toString()
+      publicKey.toString(),
     )
 
     const status = await this.rpc.getStatus()
@@ -370,8 +371,6 @@ export class TransactionBuilder {
   }
 
   private base58ToBytes(base58: string): Uint8Array {
-    // TODO: Simplified base58 decode
-    // Proper implementation in utils/key.ts
-    return new Uint8Array(32) // Placeholder
+    return base58Decode(base58)
   }
 }

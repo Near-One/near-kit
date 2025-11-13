@@ -55,7 +55,7 @@ export class FileKeyStore implements KeyStore {
     // Expand home directory
     this.basePath = basePath.replace(
       /^~/,
-      process.env["HOME"] || process.env["USERPROFILE"] || ""
+      process.env["HOME"] || process.env["USERPROFILE"] || "",
     )
   }
 
@@ -169,7 +169,7 @@ export class EncryptedKeyStore implements KeyStore {
 
     // Decode from base64
     const encrypted = Uint8Array.from(atob(encryptedData), (c) =>
-      c.charCodeAt(0)
+      c.charCodeAt(0),
     )
     const keyBytes = encoder.encode(this.password)
 

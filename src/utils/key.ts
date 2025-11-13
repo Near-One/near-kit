@@ -2,7 +2,10 @@
  * Key generation and management utilities
  */
 
-import * as nacl from "tweetnacl"
+import { ed25519 } from "@noble/curves/ed25519.js"
+import { HDKey } from "@scure/bip32"
+import * as bip39 from "@scure/bip39"
+import { wordlist } from "@scure/bip39/wordlists/english.js"
 import { ED25519_KEY_PREFIX } from "../core/constants.js"
 import {
   type KeyPair,
@@ -86,7 +89,8 @@ class Ed25519KeyPair implements KeyPair {
   private privateKey: Uint8Array
 
   constructor(secretKey: Uint8Array) {
-    this.privateKey = secretKey
+    // secretKey is 64 bytes: [32 bytes private key][32 bytes public key]
+    this.privateKey = secretKey.slice(0, 32)
     const publicKeyData = secretKey.slice(32)
 
     this.publicKey = {
@@ -99,7 +103,7 @@ class Ed25519KeyPair implements KeyPair {
   }
 
   sign(message: Uint8Array): Signature {
-    const signature = nacl.sign.detached(message, this.privateKey)
+    const signature = ed25519.sign(message, this.privateKey)
     return {
       keyType: KeyType.ED25519,
       data: signature,
@@ -107,10 +111,14 @@ class Ed25519KeyPair implements KeyPair {
   }
 
   static fromRandom(): Ed25519KeyPair {
-    const keyPair = nacl.sign.keyPair()
+    const privateKey = ed25519.utils.randomSecretKey()
+    const publicKey = ed25519.getPublicKey(privateKey)
+
+    // Combine into 64-byte format for compatibility
     const secretKey = new Uint8Array(64)
-    secretKey.set(keyPair.secretKey.slice(0, 32))
-    secretKey.set(keyPair.publicKey, 32)
+    secretKey.set(privateKey, 0)
+    secretKey.set(publicKey, 32)
+
     return new Ed25519KeyPair(secretKey)
   }
 
@@ -143,72 +151,61 @@ export function parseKey(keyString: string): KeyPair {
 }
 
 /**
- * TODO:
- * Generate a seed phrase (12 words)
- * Note: This is a placeholder implementation. In production, use a proper BIP39 library
- * @returns A seed phrase string
+ * Generate a BIP39 seed phrase (12 words by default)
+ * Uses proper BIP39 implementation with cryptographically secure randomness
+ * @param wordCount - Number of words (12, 15, 18, 21, or 24). Defaults to 12
+ * @returns A BIP39 seed phrase string
  */
-export function generateSeedPhrase(): string {
-  // This is a simplified version. In production, use a BIP39 library
-  const wordList = [
-    "abandon",
-    "ability",
-    "able",
-    "about",
-    "above",
-    "absent",
-    "absorb",
-    "abstract",
-    "absurd",
-    "abuse",
-    "access",
-    "accident",
-    "account",
-    "accuse",
-    "achieve",
-    "acid",
-  ]
+export function generateSeedPhrase(
+  wordCount: 12 | 15 | 18 | 21 | 24 = 12,
+): string {
+  // Map word count to entropy bits (as per BIP39 spec)
+  const entropyBits = wordCount * 11 - wordCount / 3
+  const entropyBytes = entropyBits / 8
 
-  const words: string[] = []
-  for (let i = 0; i < 12; i++) {
-    const randomIndex = Math.floor(Math.random() * wordList.length)
-    words.push(wordList[randomIndex]!)
-  }
+  // Generate cryptographically secure random entropy
+  const entropy = new Uint8Array(entropyBytes)
+  crypto.getRandomValues(entropy)
 
-  return words.join(" ")
+  // Generate mnemonic from entropy
+  return bip39.entropyToMnemonic(entropy, wordlist)
 }
 
 /**
- * Parse a seed phrase to derive a key pair
- * Note: This is a placeholder implementation
- * @param phrase - Seed phrase
- * @param path - Derivation path (optional)
+ * Parse a BIP39 seed phrase to derive a key pair using proper BIP32/SLIP10 derivation
+ * @param phrase - BIP39 seed phrase (12-24 words)
+ * @param path - BIP32 derivation path (defaults to "m/44'/397'/0'" for NEAR)
  * @returns KeyPair instance
  */
-export function parseSeedPhrase(phrase: string, _path?: string): KeyPair {
-  // TODO:
-  // This is a simplified version. In production, use proper BIP32/BIP39/SLIP10 derivation
-  // For now, we'll just generate a key based on the hash of the phrase
-  const encoder = new TextEncoder()
-  const data = encoder.encode(phrase)
-
-  // Simple hash (not cryptographically secure for production)
-  let hash = 0
-  for (let i = 0; i < data.length; i++) {
-    hash = (hash << 5) - hash + data[i]!
-    hash = hash & hash
+export function parseSeedPhrase(
+  phrase: string,
+  path: string = "m/44'/397'/0'",
+): KeyPair {
+  // Validate the mnemonic
+  if (!bip39.validateMnemonic(phrase, wordlist)) {
+    throw new Error("Invalid BIP39 seed phrase")
   }
 
-  // Generate deterministic key (this is NOT secure, just for demonstration)
-  const seed = new Uint8Array(32)
-  for (let i = 0; i < 32; i++) {
-    seed[i] = (hash >> i % 32) & 0xff
+  // Convert mnemonic to seed (64 bytes)
+  const seed = bip39.mnemonicToSeedSync(phrase)
+
+  // Derive HD key using BIP32 with ed25519 (SLIP10)
+  // Note: HDKey from @scure/bip32 supports ed25519 via SLIP10
+  const hdkey = HDKey.fromMasterSeed(seed)
+  const derived = hdkey.derive(path)
+
+  if (!derived.privateKey) {
+    throw new Error("Failed to derive private key from seed phrase")
   }
 
-  const keyPair = nacl.sign.keyPair.fromSeed(seed)
+  // Get the ed25519 public key from private key
+  const privateKey = derived.privateKey
+  const publicKey = ed25519.getPublicKey(privateKey)
+
+  // Combine into 64-byte format for compatibility
   const secretKey = new Uint8Array(64)
-  secretKey.set(keyPair.secretKey.slice(0, 32))
-  secretKey.set(keyPair.publicKey, 32)
+  secretKey.set(privateKey, 0)
+  secretKey.set(publicKey, 32)
 
   return new Ed25519KeyPair(secretKey)
 }
