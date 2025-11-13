@@ -15,6 +15,8 @@ import { InMemoryKeyStore } from '../keys/index.js';
 import { parseKey } from '../utils/key.js';
 import { AccountDoesNotExistError, NetworkError } from '../errors/index.js';
 import { TransactionBuilder } from './transaction.js';
+import { createContract } from '../contracts/contract.js';
+import type { ContractMethods } from '../contracts/contract.js';
 
 export class Near {
   private rpc: RpcClient;
@@ -228,9 +230,8 @@ export class Near {
 
   /**
    * Create a type-safe contract interface
-   * (To be implemented in Contract class)
    */
-  contract<T>(_contractId: string): T {
-    throw new Error('contract() requires Contract implementation');
+  contract<T extends ContractMethods>(contractId: string): T {
+    return createContract<T>(this, contractId);
   }
 }
