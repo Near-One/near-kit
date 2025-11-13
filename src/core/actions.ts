@@ -75,6 +75,89 @@ export class DeleteKey {
   }
 }
 
+// ==================== Global Contract Actions ====================
+
+export class GlobalContractDeployMode {
+  CodeHash?: Record<string, never>
+  AccountId?: Record<string, never>
+
+  constructor(mode: { CodeHash: Record<string, never> } | { AccountId: Record<string, never> }) {
+    if ("CodeHash" in mode) {
+      this.CodeHash = mode.CodeHash
+    } else if ("AccountId" in mode) {
+      this.AccountId = mode.AccountId
+    }
+  }
+}
+
+export class GlobalContractIdentifier {
+  CodeHash?: Uint8Array
+  AccountId?: string
+
+  constructor(id: { CodeHash: Uint8Array } | { AccountId: string }) {
+    if ("CodeHash" in id) {
+      this.CodeHash = id.CodeHash
+    } else if ("AccountId" in id) {
+      this.AccountId = id.AccountId
+    }
+  }
+}
+
+export class DeployGlobalContract {
+  code: Uint8Array
+  deployMode: GlobalContractDeployMode
+
+  constructor(code: Uint8Array, deployMode: GlobalContractDeployMode) {
+    this.code = code
+    this.deployMode = deployMode
+  }
+}
+
+export class UseGlobalContract {
+  contractIdentifier: GlobalContractIdentifier
+
+  constructor(contractIdentifier: GlobalContractIdentifier) {
+    this.contractIdentifier = contractIdentifier
+  }
+}
+
+// ==================== Delegate Actions ====================
+
+export class DelegateAction {
+  senderId: string
+  receiverId: string
+  actions: Action[]
+  nonce: bigint
+  maxBlockHeight: bigint
+  publicKey: PublicKey
+
+  constructor(
+    senderId: string,
+    receiverId: string,
+    actions: Action[],
+    nonce: bigint,
+    maxBlockHeight: bigint,
+    publicKey: PublicKey
+  ) {
+    this.senderId = senderId
+    this.receiverId = receiverId
+    this.actions = actions
+    this.nonce = nonce
+    this.maxBlockHeight = maxBlockHeight
+    this.publicKey = publicKey
+  }
+}
+
+export class SignedDelegate {
+  delegateAction: DelegateAction
+  signature: import("./types.js").Signature
+
+  constructor(delegateAction: DelegateAction, signature: import("./types.js").Signature) {
+    this.delegateAction = delegateAction
+    this.signature = signature
+  }
+}
+
 // ==================== Action Factory Functions ====================
 
 /**
@@ -159,5 +242,41 @@ export function deleteKey(publicKey: PublicKey): Action {
   return {
     enum: "deleteKey",
     deleteKey: new DeleteKey(publicKey),
+  }
+}
+
+/**
+ * Create a deploy global contract action
+ */
+export function deployGlobalContract(
+  code: Uint8Array,
+  deployMode: GlobalContractDeployMode
+): Action {
+  return {
+    enum: "deployGlobalContract",
+    deployGlobalContract: new DeployGlobalContract(code, deployMode),
+  }
+}
+
+/**
+ * Create a use global contract action
+ */
+export function useGlobalContract(contractIdentifier: GlobalContractIdentifier): Action {
+  return {
+    enum: "useGlobalContract",
+    useGlobalContract: new UseGlobalContract(contractIdentifier),
+  }
+}
+
+/**
+ * Create a signed delegate action for meta-transactions
+ */
+export function signedDelegate(
+  delegateAction: DelegateAction,
+  signature: import("./types.js").Signature
+): Action {
+  return {
+    enum: "signedDelegate",
+    signedDelegate: new SignedDelegate(delegateAction, signature),
   }
 }

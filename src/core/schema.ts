@@ -148,11 +148,84 @@ const DeleteAccountSchema = b.struct({
   beneficiaryId: b.string(),
 })
 
-// We don't support delegate actions, global contracts yet
-// These are here for future compatibility
-const SignedDelegateSchema = b.struct({})
-const DeployGlobalContractSchema = b.struct({})
-const UseGlobalContractSchema = b.struct({})
+// ==================== Global Contract Actions ====================
+
+/**
+ * GlobalContractDeployMode enum
+ * 0 = CodeHash (deploy by code hash)
+ * 1 = AccountId (deploy by account ID)
+ */
+const GlobalContractDeployModeSchema = b.enum({
+  CodeHash: b.struct({}),
+  AccountId: b.struct({}),
+})
+
+/**
+ * GlobalContractIdentifier enum
+ * 0 = CodeHash (32-byte hash)
+ * 1 = AccountId (string)
+ */
+const GlobalContractIdentifierSchema = b.enum({
+  CodeHash: b.array(b.u8(), 32),
+  AccountId: b.string(),
+})
+
+/**
+ * DeployGlobalContract action
+ */
+const DeployGlobalContractSchema = b.struct({
+  code: b.vec(b.u8()),
+  deployMode: GlobalContractDeployModeSchema,
+})
+
+/**
+ * UseGlobalContract action
+ */
+const UseGlobalContractSchema = b.struct({
+  contractIdentifier: GlobalContractIdentifierSchema,
+})
+
+// ==================== Delegate Actions ====================
+
+/**
+ * ClassicActions enum - same as Action but without nested SignedDelegate
+ * Used within DelegateAction to prevent infinite recursion
+ * The signedDelegate variant uses a string placeholder
+ */
+const ClassicActionsSchema = b.enum({
+  createAccount: CreateAccountSchema,
+  deployContract: DeployContractSchema,
+  functionCall: FunctionCallSchema,
+  transfer: TransferSchema,
+  stake: StakeSchema,
+  addKey: AddKeySchema,
+  deleteKey: DeleteKeySchema,
+  deleteAccount: DeleteAccountSchema,
+  signedDelegate: b.string(), // Placeholder - should not be used
+  deployGlobalContract: DeployGlobalContractSchema,
+  useGlobalContract: UseGlobalContractSchema,
+})
+
+/**
+ * DelegateAction for meta-transactions
+ * Allows one account to sign a transaction on behalf of another
+ */
+const DelegateActionSchema = b.struct({
+  senderId: b.string(),
+  receiverId: b.string(),
+  actions: b.vec(ClassicActionsSchema),
+  nonce: b.u64(),
+  maxBlockHeight: b.u64(),
+  publicKey: PublicKeySchema,
+})
+
+/**
+ * SignedDelegate - a delegate action with signature
+ */
+const SignedDelegateSchema = b.struct({
+  delegateAction: DelegateActionSchema,
+  signature: SignatureSchema,
+})
 
 /**
  * Action enum matching NEAR protocol action discriminants
@@ -307,6 +380,52 @@ export function serializeTransaction(tx: Transaction): Uint8Array {
             beneficiaryId: (actionData as any).beneficiaryId,
           }
         }
+      } else if (actionType === "signedDelegate") {
+        const signedDelegate = actionData as any
+        return {
+          signedDelegate: {
+            delegateAction: {
+              senderId: signedDelegate.delegateAction.senderId,
+              receiverId: signedDelegate.delegateAction.receiverId,
+              actions: signedDelegate.delegateAction.actions.map((action: any) => {
+                // Recursively convert delegate actions
+                const type = action.enum
+                const data = action[type]
+                // Same conversion logic as above for classic actions
+                if (type === "createAccount") return { createAccount: {} }
+                if (type === "deployContract") return { deployContract: { code: Array.from(data.code) } }
+                if (type === "functionCall") return { functionCall: { methodName: data.methodName, args: Array.from(data.args), gas: data.gas, deposit: data.deposit } }
+                if (type === "transfer") return { transfer: { deposit: data.deposit } }
+                if (type === "stake") return { stake: { stake: data.stake, publicKey: publicKeyToZorsh(data.publicKey) } }
+                if (type === "addKey") return { addKey: { publicKey: publicKeyToZorsh(data.publicKey), accessKey: { nonce: data.accessKey.nonce, permission: data.accessKey.permission } } }
+                if (type === "deleteKey") return { deleteKey: { publicKey: publicKeyToZorsh(data.publicKey) } }
+                if (type === "deleteAccount") return { deleteAccount: { beneficiaryId: data.beneficiaryId } }
+                if (type === "deployGlobalContract") return { deployGlobalContract: { code: Array.from(data.code), deployMode: data.deployMode } }
+                if (type === "useGlobalContract") return { useGlobalContract: { contractIdentifier: data.contractIdentifier } }
+                throw new Error(`Unknown delegate action type: ${type}`)
+              }),
+              nonce: signedDelegate.delegateAction.nonce,
+              maxBlockHeight: signedDelegate.delegateAction.maxBlockHeight,
+              publicKey: publicKeyToZorsh(signedDelegate.delegateAction.publicKey),
+            },
+            signature: signatureToZorsh(signedDelegate.signature),
+          }
+        }
+      } else if (actionType === "deployGlobalContract") {
+        const deploy = actionData as any
+        return {
+          deployGlobalContract: {
+            code: Array.from(deploy.code),
+            deployMode: deploy.deployMode, // Already in enum format
+          }
+        }
+      } else if (actionType === "useGlobalContract") {
+        const use = actionData as any
+        return {
+          useGlobalContract: {
+            contractIdentifier: use.contractIdentifier, // Already in enum format
+          }
+        }
       }
 
       throw new Error(`Unknown action type: ${actionType}`)
@@ -385,6 +504,52 @@ export function serializeSignedTransaction(signedTx: SignedTransaction): Uint8Ar
           return {
             deleteAccount: {
               beneficiaryId: (actionData as any).beneficiaryId,
+            }
+          }
+        } else if (actionType === "signedDelegate") {
+          const signedDelegate = actionData as any
+          return {
+            signedDelegate: {
+              delegateAction: {
+                senderId: signedDelegate.delegateAction.senderId,
+                receiverId: signedDelegate.delegateAction.receiverId,
+                actions: signedDelegate.delegateAction.actions.map((action: any) => {
+                  // Recursively convert delegate actions
+                  const type = action.enum
+                  const data = action[type]
+                  // Same conversion logic as above for classic actions
+                  if (type === "createAccount") return { createAccount: {} }
+                  if (type === "deployContract") return { deployContract: { code: Array.from(data.code) } }
+                  if (type === "functionCall") return { functionCall: { methodName: data.methodName, args: Array.from(data.args), gas: data.gas, deposit: data.deposit } }
+                  if (type === "transfer") return { transfer: { deposit: data.deposit } }
+                  if (type === "stake") return { stake: { stake: data.stake, publicKey: publicKeyToZorsh(data.publicKey) } }
+                  if (type === "addKey") return { addKey: { publicKey: publicKeyToZorsh(data.publicKey), accessKey: { nonce: data.accessKey.nonce, permission: data.accessKey.permission } } }
+                  if (type === "deleteKey") return { deleteKey: { publicKey: publicKeyToZorsh(data.publicKey) } }
+                  if (type === "deleteAccount") return { deleteAccount: { beneficiaryId: data.beneficiaryId } }
+                  if (type === "deployGlobalContract") return { deployGlobalContract: { code: Array.from(data.code), deployMode: data.deployMode } }
+                  if (type === "useGlobalContract") return { useGlobalContract: { contractIdentifier: data.contractIdentifier } }
+                  throw new Error(`Unknown delegate action type: ${type}`)
+                }),
+                nonce: signedDelegate.delegateAction.nonce,
+                maxBlockHeight: signedDelegate.delegateAction.maxBlockHeight,
+                publicKey: publicKeyToZorsh(signedDelegate.delegateAction.publicKey),
+              },
+              signature: signatureToZorsh(signedDelegate.signature),
+            }
+          }
+        } else if (actionType === "deployGlobalContract") {
+          const deploy = actionData as any
+          return {
+            deployGlobalContract: {
+              code: Array.from(deploy.code),
+              deployMode: deploy.deployMode, // Already in enum format
+            }
+          }
+        } else if (actionType === "useGlobalContract") {
+          const use = actionData as any
+          return {
+            useGlobalContract: {
+              contractIdentifier: use.contractIdentifier, // Already in enum format
             }
           }
         }
