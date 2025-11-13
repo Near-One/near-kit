@@ -281,6 +281,19 @@ export const ActionSchema = b.enum({
  */
 export type Action = b.infer<typeof ActionSchema>
 
+// Export individual action types for use in helper function signatures
+export type TransferAction = { transfer: b.infer<typeof TransferSchema> }
+export type FunctionCallAction = { functionCall: b.infer<typeof FunctionCallSchema> }
+export type CreateAccountAction = { createAccount: b.infer<typeof CreateAccountSchema> }
+export type DeleteAccountAction = { deleteAccount: b.infer<typeof DeleteAccountSchema> }
+export type DeployContractAction = { deployContract: b.infer<typeof DeployContractSchema> }
+export type StakeAction = { stake: b.infer<typeof StakeSchema> }
+export type AddKeyAction = { addKey: b.infer<typeof AddKeySchema> }
+export type DeleteKeyAction = { deleteKey: b.infer<typeof DeleteKeySchema> }
+export type DeployGlobalContractAction = { deployGlobalContract: b.infer<typeof DeployGlobalContractSchema> }
+export type UseGlobalContractAction = { useGlobalContract: b.infer<typeof UseGlobalContractSchema> }
+export type SignedDelegateAction = { signedDelegate: b.infer<typeof SignedDelegateSchema> }
+
 // ==================== Transaction ====================
 
 /**
@@ -310,6 +323,15 @@ export const SignedTransactionSchema = b.struct({
  * Convert our PublicKey type to zorsh-compatible format
  * Exported for use in action helpers
  */
+export function publicKeyToZorsh(
+  pk: PublicKey & { keyType: 0 | import("./types.js").KeyType.ED25519 }
+): { ed25519Key: { data: number[] } }
+export function publicKeyToZorsh(
+  pk: PublicKey & { keyType: 1 | import("./types.js").KeyType.SECP256K1 }
+): { secp256k1Key: { data: number[] } }
+export function publicKeyToZorsh(
+  pk: PublicKey
+): { ed25519Key: { data: number[] } } | { secp256k1Key: { data: number[] } }
 export function publicKeyToZorsh(pk: PublicKey) {
   if (pk.keyType === 0) {
     // Ed25519
@@ -324,6 +346,15 @@ export function publicKeyToZorsh(pk: PublicKey) {
  * Convert our Signature type to zorsh-compatible format
  * Exported for use in action helpers
  */
+export function signatureToZorsh(
+  sig: Signature & { keyType: 0 | import("./types.js").KeyType.ED25519 }
+): { ed25519Signature: { data: number[] } }
+export function signatureToZorsh(
+  sig: Signature & { keyType: 1 | import("./types.js").KeyType.SECP256K1 }
+): { secp256k1Signature: { data: number[] } }
+export function signatureToZorsh(
+  sig: Signature
+): { ed25519Signature: { data: number[] } } | { secp256k1Signature: { data: number[] } }
 export function signatureToZorsh(sig: Signature) {
   if (sig.keyType === 0) {
     // Ed25519

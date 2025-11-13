@@ -59,7 +59,9 @@ describe("PublicKey conversion", () => {
 
     const zorsh = publicKeyToZorsh(pk)
     expect("ed25519Key" in zorsh).toBe(true)
-    expect(zorsh.ed25519Key.data).toEqual(Array(32).fill(1))
+    if ("ed25519Key" in zorsh) {
+      expect(zorsh.ed25519Key.data).toEqual(Array(32).fill(1))
+    }
   })
 
   test("converts Secp256k1 public key to zorsh format", () => {
@@ -71,7 +73,9 @@ describe("PublicKey conversion", () => {
 
     const zorsh = publicKeyToZorsh(pk)
     expect("secp256k1Key" in zorsh).toBe(true)
-    expect(zorsh.secp256k1Key.data).toEqual(Array(64).fill(2))
+    if ("secp256k1Key" in zorsh) {
+      expect(zorsh.secp256k1Key.data).toEqual(Array(64).fill(2))
+    }
   })
 })
 
@@ -84,7 +88,9 @@ describe("Signature conversion", () => {
 
     const zorsh = signatureToZorsh(sig)
     expect("ed25519Signature" in zorsh).toBe(true)
-    expect(zorsh.ed25519Signature.data).toEqual(Array(64).fill(3))
+    if ("ed25519Signature" in zorsh) {
+      expect(zorsh.ed25519Signature.data).toEqual(Array(64).fill(3))
+    }
   })
 
   test("converts Secp256k1 signature to zorsh format", () => {
@@ -95,7 +101,9 @@ describe("Signature conversion", () => {
 
     const zorsh = signatureToZorsh(sig)
     expect("secp256k1Signature" in zorsh).toBe(true)
-    expect(zorsh.secp256k1Signature.data).toEqual(Array(65).fill(4))
+    if ("secp256k1Signature" in zorsh) {
+      expect(zorsh.secp256k1Signature.data).toEqual(Array(65).fill(4))
+    }
   })
 })
 
@@ -138,7 +146,9 @@ describe("Action serialization", () => {
 
     // Public key should be converted to zorsh format
     expect("ed25519Key" in action.stake.publicKey).toBe(true)
-    expect(action.stake.publicKey.ed25519Key.data).toEqual(Array(32).fill(5))
+    if ("ed25519Key" in action.stake.publicKey) {
+      expect(action.stake.publicKey.ed25519Key.data).toEqual(Array(32).fill(5))
+    }
   })
 
   test("serializes add key action with converted public key", () => {
@@ -155,7 +165,9 @@ describe("Action serialization", () => {
 
     // Public key should be converted
     expect("ed25519Key" in action.addKey.publicKey).toBe(true)
-    expect(action.addKey.publicKey.ed25519Key.data).toEqual(Array(32).fill(6))
+    if ("ed25519Key" in action.addKey.publicKey) {
+      expect(action.addKey.publicKey.ed25519Key.data).toEqual(Array(32).fill(6))
+    }
 
     // Permission should be passed through
     expect(action.addKey.accessKey.permission).toEqual(permission)
@@ -173,7 +185,9 @@ describe("Action serialization", () => {
 
     expect("deleteKey" in action).toBe(true)
     expect("ed25519Key" in action.deleteKey.publicKey).toBe(true)
-    expect(action.deleteKey.publicKey.ed25519Key.data).toEqual(Array(32).fill(7))
+    if ("ed25519Key" in action.deleteKey.publicKey) {
+      expect(action.deleteKey.publicKey.ed25519Key.data).toEqual(Array(32).fill(7))
+    }
   })
 
   test("serializes deploy contract action", () => {

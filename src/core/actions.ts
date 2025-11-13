@@ -3,8 +3,22 @@
  * Provides clean, type-safe interfaces for creating NEAR transaction actions
  */
 
-import type { Action, PublicKey } from "./types.js"
-import type { ClassicAction, AccessKeyPermissionBorsh } from "./schema.js"
+import type { PublicKey } from "./types.js"
+import type {
+  ClassicAction,
+  AccessKeyPermissionBorsh,
+  TransferAction,
+  FunctionCallAction,
+  CreateAccountAction,
+  DeleteAccountAction,
+  DeployContractAction,
+  StakeAction,
+  AddKeyAction,
+  DeleteKeyAction,
+  DeployGlobalContractAction,
+  UseGlobalContractAction,
+  SignedDelegateAction,
+} from "./schema.js"
 import { publicKeyToZorsh, signatureToZorsh } from "./schema.js"
 
 // ==================== Action Data Classes ====================
@@ -165,7 +179,7 @@ export class SignedDelegate {
 /**
  * Create a transfer action
  */
-export function transfer(deposit: bigint): Action {
+export function transfer(deposit: bigint): TransferAction {
   return {
     transfer: { deposit },
   }
@@ -179,7 +193,7 @@ export function functionCall(
   args: Uint8Array,
   gas: bigint,
   deposit: bigint
-): Action {
+): FunctionCallAction {
   return {
     functionCall: { methodName, args, gas, deposit },
   }
@@ -188,7 +202,7 @@ export function functionCall(
 /**
  * Create an account creation action
  */
-export function createAccount(): Action {
+export function createAccount(): CreateAccountAction {
   return {
     createAccount: {},
   }
@@ -197,7 +211,7 @@ export function createAccount(): Action {
 /**
  * Create a delete account action
  */
-export function deleteAccount(beneficiaryId: string): Action {
+export function deleteAccount(beneficiaryId: string): DeleteAccountAction {
   return {
     deleteAccount: { beneficiaryId },
   }
@@ -206,7 +220,7 @@ export function deleteAccount(beneficiaryId: string): Action {
 /**
  * Create a deploy contract action
  */
-export function deployContract(code: Uint8Array): Action {
+export function deployContract(code: Uint8Array): DeployContractAction {
   return {
     deployContract: { code },
   }
@@ -215,7 +229,7 @@ export function deployContract(code: Uint8Array): Action {
 /**
  * Create a stake action
  */
-export function stake(amount: bigint, publicKey: PublicKey): Action {
+export function stake(amount: bigint, publicKey: PublicKey): StakeAction {
   return {
     stake: {
       stake: amount,
@@ -227,7 +241,10 @@ export function stake(amount: bigint, publicKey: PublicKey): Action {
 /**
  * Create an add key action
  */
-export function addKey(publicKey: PublicKey, permission: AccessKeyPermissionBorsh): Action {
+export function addKey(
+  publicKey: PublicKey,
+  permission: AccessKeyPermissionBorsh
+): AddKeyAction {
   return {
     addKey: {
       publicKey: publicKeyToZorsh(publicKey),
@@ -239,7 +256,7 @@ export function addKey(publicKey: PublicKey, permission: AccessKeyPermissionBors
 /**
  * Create a delete key action
  */
-export function deleteKey(publicKey: PublicKey): Action {
+export function deleteKey(publicKey: PublicKey): DeleteKeyAction {
   return {
     deleteKey: {
       publicKey: publicKeyToZorsh(publicKey),
@@ -253,7 +270,7 @@ export function deleteKey(publicKey: PublicKey): Action {
 export function deployGlobalContract(
   code: Uint8Array,
   deployMode: GlobalContractDeployMode
-): Action {
+): DeployGlobalContractAction {
   // Convert class instance to discriminated union
   const deployModeConverted = deployMode.CodeHash !== undefined
     ? { CodeHash: {} }
@@ -270,7 +287,9 @@ export function deployGlobalContract(
 /**
  * Create a use global contract action
  */
-export function useGlobalContract(contractIdentifier: GlobalContractIdentifier): Action {
+export function useGlobalContract(
+  contractIdentifier: GlobalContractIdentifier
+): UseGlobalContractAction {
   // Convert class instance to discriminated union
   const identifierConverted = contractIdentifier.CodeHash !== undefined
     ? { CodeHash: Array.from(contractIdentifier.CodeHash) as number[] }
@@ -289,7 +308,7 @@ export function useGlobalContract(contractIdentifier: GlobalContractIdentifier):
 export function signedDelegate(
   delegateAction: DelegateAction,
   signature: import("./types.js").Signature
-): Action {
+): SignedDelegateAction {
   return {
     signedDelegate: {
       delegateAction: {
