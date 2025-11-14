@@ -4,7 +4,11 @@
 
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
 import { RpcClient } from "../../src/core/rpc/rpc.js"
+import { TransactionBuilder } from "../../src/core/transaction.js"
+import type { AccessKeyView, StatusResponse } from "../../src/core/types.js"
 import { InvalidNonceError, NetworkError } from "../../src/errors/index.js"
+import { InMemoryKeyStore } from "../../src/keys/index.js"
+import { generateKey } from "../../src/utils/key.js"
 
 describe("RPC Retry Logic", () => {
   let originalFetch: typeof global.fetch
@@ -236,6 +240,153 @@ describe("RPC Retry Logic", () => {
     // Should try initial + 2 retries = 3 total attempts
     expect(attemptCount).toBe(3)
   }, 10000)
+
+  test("should not retry on successful request (happy path)", async () => {
+    let attemptCount = 0
+    const mockFetch = mock(async () => {
+      attemptCount++
+      // Succeed immediately
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { success: true },
+        }),
+        { status: 200 },
+      )
+    })
+
+    global.fetch = mockFetch as unknown as typeof global.fetch
+
+    const rpc = new RpcClient(
+      "https://test.rpc.near.org",
+      {},
+      { maxRetries: 3, initialDelayMs: 50 },
+    )
+    const result = await rpc.call<{ success: boolean }>("test_method", {})
+
+    expect(result.success).toBe(true)
+    expect(attemptCount).toBe(1) // Should only try once
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  }, 10000)
+
+  test("should retry on 500 Internal Server Error", async () => {
+    let attemptCount = 0
+    const mockFetch = mock(async () => {
+      attemptCount++
+      if (attemptCount < 2) {
+        return new Response(
+          JSON.stringify({ error: "Internal Server Error" }),
+          {
+            status: 500,
+            statusText: "Internal Server Error",
+          },
+        )
+      }
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { success: true },
+        }),
+        { status: 200 },
+      )
+    })
+
+    global.fetch = mockFetch as unknown as typeof global.fetch
+
+    const rpc = new RpcClient(
+      "https://test.rpc.near.org",
+      {},
+      { maxRetries: 3, initialDelayMs: 50 },
+    )
+    const result = await rpc.call<{ success: boolean }>("test_method", {})
+
+    expect(result.success).toBe(true)
+    expect(attemptCount).toBe(2)
+  }, 10000)
+
+  test("should retry on 502 Bad Gateway", async () => {
+    let attemptCount = 0
+    const mockFetch = mock(async () => {
+      attemptCount++
+      if (attemptCount < 2) {
+        return new Response(JSON.stringify({ error: "Bad Gateway" }), {
+          status: 502,
+          statusText: "Bad Gateway",
+        })
+      }
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { success: true },
+        }),
+        { status: 200 },
+      )
+    })
+
+    global.fetch = mockFetch as unknown as typeof global.fetch
+
+    const rpc = new RpcClient(
+      "https://test.rpc.near.org",
+      {},
+      { maxRetries: 3, initialDelayMs: 50 },
+    )
+    const result = await rpc.call<{ success: boolean }>("test_method", {})
+
+    expect(result.success).toBe(true)
+    expect(attemptCount).toBe(2)
+  }, 10000)
+
+  test("should use exponential backoff delays", async () => {
+    const delays: number[] = []
+    let lastTimestamp = Date.now()
+    let attemptCount = 0
+
+    const mockFetch = mock(async () => {
+      const now = Date.now()
+      if (attemptCount > 0) {
+        delays.push(now - lastTimestamp)
+      }
+      lastTimestamp = now
+      attemptCount++
+
+      if (attemptCount < 4) {
+        return new Response(JSON.stringify({ error: "Service Unavailable" }), {
+          status: 503,
+          statusText: "Service Unavailable",
+        })
+      }
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          result: { success: true },
+        }),
+        { status: 200 },
+      )
+    })
+
+    global.fetch = mockFetch as unknown as typeof global.fetch
+
+    const rpc = new RpcClient(
+      "https://test.rpc.near.org",
+      {},
+      { maxRetries: 4, initialDelayMs: 100 },
+    )
+    await rpc.call<{ success: boolean }>("test_method", {})
+
+    // Verify exponential backoff: 100ms, 200ms, 400ms
+    // Allow ±50ms tolerance for timing
+    expect(delays.length).toBe(3)
+    expect(delays[0]).toBeGreaterThanOrEqual(80) // 100ms ±20ms
+    expect(delays[0]).toBeLessThanOrEqual(150)
+    expect(delays[1]).toBeGreaterThanOrEqual(180) // 200ms ±20ms
+    expect(delays[1]).toBeLessThanOrEqual(250)
+    expect(delays[2]).toBeGreaterThanOrEqual(380) // 400ms ±20ms
+    expect(delays[2]).toBeLessThanOrEqual(450)
+  }, 10000)
 })
 
 describe("InvalidNonceError Retry Logic", () => {
@@ -253,4 +404,167 @@ describe("InvalidNonceError Retry Logic", () => {
     expect(error.message).toContain("99")
     expect(error.message).toContain("nonce")
   })
+})
+
+describe("Transaction InvalidNonceError Retry", () => {
+  test("should retry transaction with fresh nonce after InvalidNonceError", async () => {
+    // Setup
+    const keyPair = generateKey()
+    const keyStore = new InMemoryKeyStore()
+    await keyStore.add("test.near", keyPair)
+
+    let sendAttemptCount = 0
+    let getAccessKeyCallCount = 0
+
+    // Create a mock RPC client
+    const mockRpc = {
+      async getAccessKey(): Promise<AccessKeyView> {
+        getAccessKeyCallCount++
+        // Return increasing nonce on each call (simulating fresh nonce)
+        return {
+          nonce: getAccessKeyCallCount * 10,
+          permission: { fullAccess: {} },
+        } as AccessKeyView
+      },
+      async getStatus(): Promise<StatusResponse> {
+        return {
+          sync_info: {
+            latest_block_hash: "GVgoqd4XN1r7VEde3bpw2qH1FYvjJR3z8dXJ5C5FQuUL",
+          },
+        } as StatusResponse
+      },
+      async sendTransaction() {
+        sendAttemptCount++
+        if (sendAttemptCount === 1) {
+          // First attempt: throw InvalidNonceError
+          throw new InvalidNonceError(11, 10)
+        }
+        // Second attempt: succeed
+        return {
+          final_execution_status: "EXECUTED_OPTIMISTIC",
+          status: { type: "SuccessValue", value: "" },
+          transaction: {},
+          transaction_outcome: {
+            id: "test-tx-id",
+            outcome: {
+              status: { type: "SuccessValue", value: "" },
+            },
+          },
+        }
+      },
+    } as unknown as RpcClient
+
+    // Create transaction builder
+    const builder = new TransactionBuilder(
+      "test.near",
+      mockRpc,
+      keyStore,
+      undefined,
+      "EXECUTED_OPTIMISTIC",
+    )
+
+    // Execute transaction that will trigger nonce retry
+    const result = await builder.transfer("receiver.near", "1 NEAR").send()
+
+    // Verify retry happened
+    expect(sendAttemptCount).toBe(2) // Should try twice
+    expect(getAccessKeyCallCount).toBe(2) // Should fetch nonce twice
+    expect(result).toBeDefined()
+  }, 10000)
+
+  test("should throw after max nonce retries", async () => {
+    // Setup
+    const keyPair = generateKey()
+    const keyStore = new InMemoryKeyStore()
+    await keyStore.add("test.near", keyPair)
+
+    let sendAttemptCount = 0
+
+    // Create a mock RPC client that always fails with InvalidNonceError
+    const mockRpc = {
+      async getAccessKey(): Promise<AccessKeyView> {
+        return {
+          nonce: 10,
+          permission: { fullAccess: {} },
+        } as AccessKeyView
+      },
+      async getStatus(): Promise<StatusResponse> {
+        return {
+          sync_info: {
+            latest_block_hash: "GVgoqd4XN1r7VEde3bpw2qH1FYvjJR3z8dXJ5C5FQuUL",
+          },
+        } as StatusResponse
+      },
+      async sendTransaction() {
+        sendAttemptCount++
+        // Always throw InvalidNonceError
+        throw new InvalidNonceError(11, 10)
+      },
+    } as unknown as RpcClient
+
+    // Create transaction builder
+    const builder = new TransactionBuilder(
+      "test.near",
+      mockRpc,
+      keyStore,
+      undefined,
+      "EXECUTED_OPTIMISTIC",
+    )
+
+    // Execute transaction that will exhaust retries
+    await expect(async () => {
+      await builder.transfer("receiver.near", "1 NEAR").send()
+    }).toThrow(InvalidNonceError)
+
+    // Verify it tried MAX_NONCE_RETRIES (3) times
+    expect(sendAttemptCount).toBe(3)
+  }, 10000)
+
+  test("should not retry on non-InvalidNonceError", async () => {
+    // Setup
+    const keyPair = generateKey()
+    const keyStore = new InMemoryKeyStore()
+    await keyStore.add("test.near", keyPair)
+
+    let sendAttemptCount = 0
+
+    // Create a mock RPC client that throws a different error
+    const mockRpc = {
+      async getAccessKey(): Promise<AccessKeyView> {
+        return {
+          nonce: 10,
+          permission: { fullAccess: {} },
+        } as AccessKeyView
+      },
+      async getStatus(): Promise<StatusResponse> {
+        return {
+          sync_info: {
+            latest_block_hash: "GVgoqd4XN1r7VEde3bpw2qH1FYvjJR3z8dXJ5C5FQuUL",
+          },
+        } as StatusResponse
+      },
+      async sendTransaction() {
+        sendAttemptCount++
+        // Throw a different error (not InvalidNonceError)
+        throw new NetworkError("Network failure")
+      },
+    } as unknown as RpcClient
+
+    // Create transaction builder
+    const builder = new TransactionBuilder(
+      "test.near",
+      mockRpc,
+      keyStore,
+      undefined,
+      "EXECUTED_OPTIMISTIC",
+    )
+
+    // Execute transaction
+    await expect(async () => {
+      await builder.transfer("receiver.near", "1 NEAR").send()
+    }).toThrow(NetworkError)
+
+    // Verify it only tried once (no retries for non-nonce errors)
+    expect(sendAttemptCount).toBe(1)
+  }, 10000)
 })
