@@ -6,9 +6,9 @@
 // Re-exported from config-schemas.ts for backward compatibility
 
 export type {
-  NetworkPreset,
   CustomNetworkConfig,
   NetworkConfig,
+  NetworkPreset,
 } from "./config-schemas.js"
 
 export type NetworkId = "mainnet" | "testnet" | "localnet"

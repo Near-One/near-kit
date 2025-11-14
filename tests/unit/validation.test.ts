@@ -3,19 +3,19 @@
  */
 
 import { describe, expect, test } from "bun:test"
+import { generateKey } from "../../src/utils/key.js"
 import {
   AccountIdSchema,
   AmountSchema,
   GasSchema,
-  PublicKeySchema,
   isValidAccountId,
   isValidPublicKey,
   normalizeAmount,
   normalizeGas,
+  PublicKeySchema,
   validateAccountId,
   validatePublicKey,
 } from "../../src/utils/validation.js"
-import { generateKey } from "../../src/utils/key.js"
 
 describe("Account ID Schema", () => {
   test("should accept valid account IDs", () => {

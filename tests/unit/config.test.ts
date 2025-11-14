@@ -3,8 +3,11 @@
  */
 
 import { describe, expect, test } from "bun:test"
+import {
+  NearConfigSchema,
+  resolveNetworkConfig,
+} from "../../src/core/config-schemas.js"
 import { Near } from "../../src/core/near.js"
-import { NearConfigSchema, resolveNetworkConfig } from "../../src/core/config-schemas.js"
 
 describe("Network Configuration", () => {
   test("should use mainnet by default", () => {

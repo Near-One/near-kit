@@ -92,9 +92,7 @@ export function resolveNetworkConfig(network?: NetworkConfig): {
   // Default to mainnet
   if (!network) {
     const envNetwork =
-      typeof process !== "undefined"
-        ? process.env["NEAR_NETWORK"]
-        : undefined
+      typeof process !== "undefined" ? process.env["NEAR_NETWORK"] : undefined
     if (
       envNetwork &&
       (envNetwork === "mainnet" ||

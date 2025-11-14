@@ -91,9 +91,7 @@ export class Sandbox {
     const binaryPath = await ensureBinary(version)
 
     // 2. Create temporary home directory
-    const homeDir = await mkdtemp(
-      path.join(os.tmpdir(), "near-sandbox-"),
-    )
+    const homeDir = await mkdtemp(path.join(os.tmpdir(), "near-sandbox-"))
 
     // 3. Initialize sandbox
     await runInit(binaryPath, homeDir)
@@ -305,7 +303,8 @@ async function runInit(binaryPath: string, homeDir: string): Promise<void> {
         let errorMsg = `Sandbox init failed with code ${code}: ${stderr}`
 
         if (stderr.includes("file descriptor limit")) {
-          errorMsg += "\n\n" +
+          errorMsg +=
+            "\n\n" +
             "The sandbox requires at least 65,535 file descriptors.\n" +
             "Current limit can be checked with: ulimit -n\n\n" +
             "To fix on Linux, add to /etc/security/limits.conf:\n" +

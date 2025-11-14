@@ -4,14 +4,14 @@
 
 import type { ContractMethods } from "../contracts/contract.js"
 import { createContract } from "../contracts/contract.js"
+import { NearError } from "../errors/index.js"
+import { InMemoryKeyStore } from "../keys/index.js"
+import { parseKey } from "../utils/key.js"
 import {
   type NearConfig,
   NearConfigSchema,
   resolveNetworkConfig,
 } from "./config-schemas.js"
-import { NearError } from "../errors/index.js"
-import { InMemoryKeyStore } from "../keys/index.js"
-import { parseKey } from "../utils/key.js"
 import { RpcClient } from "./rpc/rpc.js"
 import { TransactionBuilder } from "./transaction.js"
 import type { CallOptions, KeyStore, Signer } from "./types.js"
@@ -119,7 +119,10 @@ export class Near {
       )
     }
 
-    const functionCallOptions: {gas?: string | number, attachedDeposit?: string | number} = {}
+    const functionCallOptions: {
+      gas?: string | number
+      attachedDeposit?: string | number
+    } = {}
     if (options.gas !== undefined) {
       functionCallOptions.gas = options.gas
     }

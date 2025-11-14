@@ -3,6 +3,7 @@
  */
 
 import { describe, expect, test } from "bun:test"
+import { KeyType } from "../../src/core/types.js"
 import {
   Ed25519KeyPair,
   generateKey,
@@ -10,7 +11,6 @@ import {
   parseKey,
   parseSeedPhrase,
 } from "../../src/utils/key.js"
-import { KeyType } from "../../src/core/types.js"
 
 describe("Key Generation", () => {
   test("generateKey() should create valid Ed25519 key pair", () => {

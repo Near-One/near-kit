@@ -73,7 +73,9 @@ export class TransactionBuilder {
     const argsJson = JSON.stringify(args)
     const argsBytes = new TextEncoder().encode(argsJson)
 
-    const gas = options.gas ? normalizeGas(options.gas) : DEFAULT_FUNCTION_CALL_GAS
+    const gas = options.gas
+      ? normalizeGas(options.gas)
+      : DEFAULT_FUNCTION_CALL_GAS
 
     const deposit = options.attachedDeposit
       ? normalizeAmount(options.attachedDeposit)

@@ -4,8 +4,8 @@
  */
 
 import { describe, expect, test } from "bun:test"
-import { TransactionBuilder } from "../../src/core/transaction.js"
 import { RpcClient } from "../../src/core/rpc/rpc.js"
+import { TransactionBuilder } from "../../src/core/transaction.js"
 import { InMemoryKeyStore } from "../../src/keys/keystore.js"
 
 // Helper to create a transaction builder for testing
@@ -26,11 +26,10 @@ describe("TransactionBuilder - Fluent API", () => {
   })
 
   test("should chain function call action", () => {
-    const builder = createBuilder().functionCall(
-      "token.near",
-      "ft_transfer",
-      { receiver_id: "bob.near", amount: "100" },
-    )
+    const builder = createBuilder().functionCall("token.near", "ft_transfer", {
+      receiver_id: "bob.near",
+      amount: "100",
+    })
 
     expect(builder).toBeInstanceOf(TransactionBuilder)
     expect((builder as any).actions.length).toBe(1)
@@ -72,10 +71,7 @@ describe("TransactionBuilder - Fluent API", () => {
   })
 
   test("should chain stake action", () => {
-    const builder = createBuilder().stake(
-      "ed25519:...",
-      "100",
-    )
+    const builder = createBuilder().stake("ed25519:...", "100")
 
     expect((builder as any).actions.length).toBe(1)
     expect((builder as any).actions[0].stake).toBeDefined()
@@ -235,7 +231,10 @@ describe("TransactionBuilder - Receiver ID Management", () => {
   })
 
   test("should set receiver ID from deployContract", () => {
-    const builder = createBuilder().deployContract("contract.near", new Uint8Array())
+    const builder = createBuilder().deployContract(
+      "contract.near",
+      new Uint8Array(),
+    )
 
     expect((builder as any).receiverId).toBe("contract.near")
   })
@@ -265,7 +264,11 @@ describe("TransactionBuilder - Action Arguments", () => {
       amount: "100",
       memo: "test",
     }
-    const builder = createBuilder().functionCall("contract.near", "method", args)
+    const builder = createBuilder().functionCall(
+      "contract.near",
+      "method",
+      args,
+    )
 
     const action = (builder as any).actions[0].functionCall
     const decodedArgs = JSON.parse(new TextDecoder().decode(action.args))
@@ -289,7 +292,11 @@ describe("TransactionBuilder - Action Arguments", () => {
         },
       },
     }
-    const builder = createBuilder().functionCall("contract.near", "method", args)
+    const builder = createBuilder().functionCall(
+      "contract.near",
+      "method",
+      args,
+    )
 
     const action = (builder as any).actions[0].functionCall
     const decodedArgs = JSON.parse(new TextDecoder().decode(action.args))

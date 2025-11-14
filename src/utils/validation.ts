@@ -61,7 +61,9 @@ export type AccountId = z.infer<typeof AccountIdSchema>
 export const PublicKeySchema = z
   .string()
   .refine(
-    (key) => key.startsWith(ED25519_KEY_PREFIX) || key.startsWith(SECP256K1_KEY_PREFIX),
+    (key) =>
+      key.startsWith(ED25519_KEY_PREFIX) ||
+      key.startsWith(SECP256K1_KEY_PREFIX),
     "Public key must start with 'ed25519:' or 'secp256k1:'",
   )
   .refine((key) => {

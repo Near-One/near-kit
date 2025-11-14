@@ -41,6 +41,9 @@ export {
   FileKeyStore,
   InMemoryKeyStore,
 } from "./keys/index.js"
+export type { SandboxOptions } from "./sandbox/index.js"
+// Sandbox
+export { Sandbox } from "./sandbox/index.js"
 // Utilities
 export {
   formatGas,
@@ -56,6 +59,3 @@ export {
   toGas,
   toTGas,
 } from "./utils/index.js"
-// Sandbox
-export { Sandbox } from "./sandbox/index.js"
-export type { SandboxOptions } from "./sandbox/index.js"
