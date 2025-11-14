@@ -21,7 +21,7 @@ describe("Amount", () => {
 
     test("preserves precision in string", () => {
       expect(Amount.NEAR("0.000000000000000000000001")).toBe(
-        "0.000000000000000000000001 NEAR",
+        "0.000000000000000000000001 NEAR"
       )
     })
   })
@@ -177,7 +177,7 @@ describe("parseAmount", () => {
         expect(error).toBeInstanceOf(Error)
         const err = error as Error
         expect(err.message).toContain("Amount.NEAR(100)")
-        expect(err.message).toContain("Amount.yocto(100)")
+        expect(err.message).toContain("Amount.yocto(100n)")
         expect(err.message).toContain('"100 NEAR"')
       }
     })
@@ -268,7 +268,7 @@ describe("formatAmount", () => {
           precision: 4,
           trimZeros: true,
           includeSuffix: false,
-        }),
+        })
       ).toBe("10.5")
     })
   })
