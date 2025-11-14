@@ -21,7 +21,7 @@ describe("Amount", () => {
 
     test("preserves precision in string", () => {
       expect(Amount.NEAR("0.000000000000000000000001")).toBe(
-        "0.000000000000000000000001 NEAR"
+        "0.000000000000000000000001 NEAR",
       )
     })
   })
@@ -268,7 +268,7 @@ describe("formatAmount", () => {
           precision: 4,
           trimZeros: true,
           includeSuffix: false,
-        })
+        }),
       ).toBe("10.5")
     })
   })
