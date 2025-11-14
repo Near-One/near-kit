@@ -93,10 +93,17 @@ export class Near {
       const network = config.network as unknown
       if (network && typeof network === "object" && "rootAccount" in network) {
         const rootAccount = network as {
-          rootAccount: { id: string; secretKey: string }
+          rootAccount: { id?: string; secretKey?: string }
         }
-        const keyPair = parseKey(rootAccount.rootAccount.secretKey)
-        void this.keyStore.add(rootAccount.rootAccount.id, keyPair)
+        // Guard: only auto-add if both id and secretKey are non-empty strings
+        if (
+          rootAccount.rootAccount?.id &&
+          rootAccount.rootAccount?.secretKey &&
+          typeof rootAccount.rootAccount.secretKey === "string"
+        ) {
+          const keyPair = parseKey(rootAccount.rootAccount.secretKey)
+          void this.keyStore.add(rootAccount.rootAccount.id, keyPair)
+        }
       }
     }
   }
