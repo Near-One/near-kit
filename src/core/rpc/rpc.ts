@@ -5,18 +5,18 @@
 import { base64 } from "@scure/base"
 import { NetworkError } from "../../errors/index.js"
 import type {
-  ViewFunctionCallResult,
-  AccountView,
   AccessKeyView,
-  StatusResponse,
+  AccountView,
   GasPriceResponse,
+  StatusResponse,
+  ViewFunctionCallResult,
 } from "../types.js"
 import {
-  ViewFunctionCallResultSchema,
-  AccountViewSchema,
   AccessKeyViewSchema,
-  StatusResponseSchema,
+  AccountViewSchema,
   GasPriceResponseSchema,
+  StatusResponseSchema,
+  ViewFunctionCallResultSchema,
 } from "./rpc-schemas.js"
 
 export interface RpcRequest {
@@ -70,7 +70,7 @@ export class RpcClient {
         throw new NetworkError(
           `HTTP ${response.status}: ${response.statusText}`,
           response.status,
-          response.status >= 500
+          response.status >= 500,
         )
       }
 
@@ -80,7 +80,7 @@ export class RpcClient {
         throw new NetworkError(
           `RPC error: ${data.error.message}`,
           data.error.code,
-          false
+          false,
         )
       }
 
@@ -98,14 +98,14 @@ export class RpcClient {
       throw new NetworkError(
         `Network request failed: ${(error as Error).message}`,
         undefined,
-        true
+        true,
       )
     }
   }
 
   async query<T = unknown>(
     path: string,
-    data: string | Uint8Array
+    data: string | Uint8Array,
   ): Promise<T> {
     return this.call("query", {
       request_type: path,

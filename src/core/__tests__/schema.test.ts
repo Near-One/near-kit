@@ -4,30 +4,30 @@
 
 import { describe, expect, test } from "bun:test"
 import {
-  ActionSchema,
-  PublicKeySchema,
-  SignatureSchema,
-  TransactionSchema,
-  publicKeyToZorsh,
-  signatureToZorsh,
-  serializeTransaction,
-  type Action,
-} from "../schema.js"
-import {
-  transfer,
-  functionCall,
+  addKey,
   createAccount,
   deleteAccount,
-  deployContract,
-  stake,
-  addKey,
   deleteKey,
+  deployContract,
+  functionCall,
+  stake,
+  transfer,
 } from "../actions.js"
 import {
-  KeyType,
+  type Action,
+  ActionSchema,
+  PublicKeySchema,
+  publicKeyToZorsh,
+  SignatureSchema,
+  serializeTransaction,
+  signatureToZorsh,
+  TransactionSchema,
+} from "../schema.js"
+import {
   type Ed25519PublicKey,
-  type Secp256k1PublicKey,
   type Ed25519Signature,
+  KeyType,
+  type Secp256k1PublicKey,
   type Secp256k1Signature,
 } from "../types.js"
 
@@ -120,7 +120,7 @@ describe("Action serialization", () => {
       "test_method",
       args,
       BigInt(30000000000000),
-      BigInt(0)
+      BigInt(0),
     )
 
     expect("functionCall" in action).toBe(true)
@@ -179,7 +179,9 @@ describe("Action serialization", () => {
 
     expect("deleteKey" in action).toBe(true)
     // Type is narrowed thanks to specific PublicKey type
-    expect(action.deleteKey.publicKey.ed25519Key.data).toEqual(Array(32).fill(7))
+    expect(action.deleteKey.publicKey.ed25519Key.data).toEqual(
+      Array(32).fill(7),
+    )
   })
 
   test("serializes deploy contract action", () => {
@@ -214,7 +216,12 @@ describe("Transaction serialization", () => {
       blockHash: new Uint8Array(32).fill(9),
       actions: [
         transfer(BigInt(1000000)),
-        functionCall("method", new Uint8Array([1, 2, 3]), BigInt(30000000000000), BigInt(0)),
+        functionCall(
+          "method",
+          new Uint8Array([1, 2, 3]),
+          BigInt(30000000000000),
+          BigInt(0),
+        ),
       ],
     }
 

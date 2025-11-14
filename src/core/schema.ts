@@ -9,12 +9,12 @@
 
 import { b } from "@zorsh/zorsh"
 import type {
-  PublicKey,
   Ed25519PublicKey,
-  Secp256k1PublicKey,
-  Signature,
   Ed25519Signature,
+  PublicKey,
+  Secp256k1PublicKey,
   Secp256k1Signature,
+  Signature,
   SignedTransaction,
   Transaction,
 } from "./types.js"
@@ -287,16 +287,30 @@ export type Action = b.infer<typeof ActionSchema>
 
 // Export individual action types for use in helper function signatures
 export type TransferAction = { transfer: b.infer<typeof TransferSchema> }
-export type FunctionCallAction = { functionCall: b.infer<typeof FunctionCallSchema> }
-export type CreateAccountAction = { createAccount: b.infer<typeof CreateAccountSchema> }
-export type DeleteAccountAction = { deleteAccount: b.infer<typeof DeleteAccountSchema> }
-export type DeployContractAction = { deployContract: b.infer<typeof DeployContractSchema> }
+export type FunctionCallAction = {
+  functionCall: b.infer<typeof FunctionCallSchema>
+}
+export type CreateAccountAction = {
+  createAccount: b.infer<typeof CreateAccountSchema>
+}
+export type DeleteAccountAction = {
+  deleteAccount: b.infer<typeof DeleteAccountSchema>
+}
+export type DeployContractAction = {
+  deployContract: b.infer<typeof DeployContractSchema>
+}
 export type StakeAction = { stake: b.infer<typeof StakeSchema> }
 export type AddKeyAction = { addKey: b.infer<typeof AddKeySchema> }
 export type DeleteKeyAction = { deleteKey: b.infer<typeof DeleteKeySchema> }
-export type DeployGlobalContractAction = { deployGlobalContract: b.infer<typeof DeployGlobalContractSchema> }
-export type UseGlobalContractAction = { useGlobalContract: b.infer<typeof UseGlobalContractSchema> }
-export type SignedDelegateAction = { signedDelegate: b.infer<typeof SignedDelegateSchema> }
+export type DeployGlobalContractAction = {
+  deployGlobalContract: b.infer<typeof DeployGlobalContractSchema>
+}
+export type UseGlobalContractAction = {
+  useGlobalContract: b.infer<typeof UseGlobalContractSchema>
+}
+export type SignedDelegateAction = {
+  signedDelegate: b.infer<typeof SignedDelegateSchema>
+}
 
 // ==================== Transaction ====================
 
@@ -327,14 +341,14 @@ export const SignedTransactionSchema = b.struct({
  * Convert our PublicKey type to zorsh-compatible format
  * Exported for use in action helpers
  */
+export function publicKeyToZorsh(pk: Ed25519PublicKey): {
+  ed25519Key: { data: number[] }
+}
+export function publicKeyToZorsh(pk: Secp256k1PublicKey): {
+  secp256k1Key: { data: number[] }
+}
 export function publicKeyToZorsh(
-  pk: Ed25519PublicKey
-): { ed25519Key: { data: number[] } }
-export function publicKeyToZorsh(
-  pk: Secp256k1PublicKey
-): { secp256k1Key: { data: number[] } }
-export function publicKeyToZorsh(
-  pk: PublicKey
+  pk: PublicKey,
 ): { ed25519Key: { data: number[] } } | { secp256k1Key: { data: number[] } }
 export function publicKeyToZorsh(pk: PublicKey) {
   if (pk.keyType === 0) {
@@ -350,15 +364,17 @@ export function publicKeyToZorsh(pk: PublicKey) {
  * Convert our Signature type to zorsh-compatible format
  * Exported for use in action helpers
  */
+export function signatureToZorsh(sig: Ed25519Signature): {
+  ed25519Signature: { data: number[] }
+}
+export function signatureToZorsh(sig: Secp256k1Signature): {
+  secp256k1Signature: { data: number[] }
+}
 export function signatureToZorsh(
-  sig: Ed25519Signature
-): { ed25519Signature: { data: number[] } }
-export function signatureToZorsh(
-  sig: Secp256k1Signature
-): { secp256k1Signature: { data: number[] } }
-export function signatureToZorsh(
-  sig: Signature
-): { ed25519Signature: { data: number[] } } | { secp256k1Signature: { data: number[] } }
+  sig: Signature,
+):
+  | { ed25519Signature: { data: number[] } }
+  | { secp256k1Signature: { data: number[] } }
 export function signatureToZorsh(sig: Signature) {
   if (sig.keyType === 0) {
     // Ed25519
@@ -383,8 +399,8 @@ function actionToZorsh(action: Action): Action {
           senderId: action.signedDelegate.delegateAction.senderId,
           receiverId: action.signedDelegate.delegateAction.receiverId,
           // Recursively convert nested actions
-          actions: action.signedDelegate.delegateAction.actions.map(
-            (a) => actionToZorsh(a as Action)
+          actions: action.signedDelegate.delegateAction.actions.map((a) =>
+            actionToZorsh(a as Action),
           ) as ClassicAction[],
           nonce: action.signedDelegate.delegateAction.nonce,
           maxBlockHeight: action.signedDelegate.delegateAction.maxBlockHeight,
@@ -417,7 +433,7 @@ export function serializeTransaction(tx: Transaction): Uint8Array {
  * Serialize a signed transaction to bytes
  */
 export function serializeSignedTransaction(
-  signedTx: SignedTransaction
+  signedTx: SignedTransaction,
 ): Uint8Array {
   return SignedTransactionSchema.serialize({
     transaction: {

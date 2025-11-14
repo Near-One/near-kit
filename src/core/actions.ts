@@ -4,26 +4,26 @@
  */
 
 import type {
-  PublicKey,
-  Ed25519PublicKey,
-  Secp256k1PublicKey,
-} from "./types.js"
-import type {
-  ClassicAction,
   AccessKeyPermissionBorsh,
-  TransferAction,
-  FunctionCallAction,
+  AddKeyAction,
+  ClassicAction,
   CreateAccountAction,
   DeleteAccountAction,
-  DeployContractAction,
-  StakeAction,
-  AddKeyAction,
   DeleteKeyAction,
+  DeployContractAction,
   DeployGlobalContractAction,
-  UseGlobalContractAction,
+  FunctionCallAction,
   SignedDelegateAction,
+  StakeAction,
+  TransferAction,
+  UseGlobalContractAction,
 } from "./schema.js"
 import { publicKeyToZorsh, signatureToZorsh } from "./schema.js"
+import type {
+  Ed25519PublicKey,
+  PublicKey,
+  Secp256k1PublicKey,
+} from "./types.js"
 
 // ==================== Action Data Classes ====================
 
@@ -41,7 +41,12 @@ export class FunctionCall {
   gas: bigint
   deposit: bigint
 
-  constructor(methodName: string, args: Uint8Array, gas: bigint, deposit: bigint) {
+  constructor(
+    methodName: string,
+    args: Uint8Array,
+    gas: bigint,
+    deposit: bigint,
+  ) {
     this.methodName = methodName
     this.args = args
     this.gas = gas
@@ -101,7 +106,11 @@ export class GlobalContractDeployMode {
   CodeHash?: Record<string, never>
   AccountId?: Record<string, never>
 
-  constructor(mode: { CodeHash: Record<string, never> } | { AccountId: Record<string, never> }) {
+  constructor(
+    mode:
+      | { CodeHash: Record<string, never> }
+      | { AccountId: Record<string, never> },
+  ) {
     if ("CodeHash" in mode) {
       this.CodeHash = mode.CodeHash
     } else if ("AccountId" in mode) {
@@ -157,7 +166,7 @@ export class DelegateAction {
     actions: ClassicAction[],
     nonce: bigint,
     maxBlockHeight: bigint,
-    publicKey: PublicKey
+    publicKey: PublicKey,
   ) {
     this.senderId = senderId
     this.receiverId = receiverId
@@ -172,7 +181,10 @@ export class SignedDelegate {
   delegateAction: DelegateAction
   signature: import("./types.js").Signature
 
-  constructor(delegateAction: DelegateAction, signature: import("./types.js").Signature) {
+  constructor(
+    delegateAction: DelegateAction,
+    signature: import("./types.js").Signature,
+  ) {
     this.delegateAction = delegateAction
     this.signature = signature
   }
@@ -196,7 +208,7 @@ export function functionCall(
   methodName: string,
   args: Uint8Array,
   gas: bigint,
-  deposit: bigint
+  deposit: bigint,
 ): FunctionCallAction {
   return {
     functionCall: { methodName, args, gas, deposit },
@@ -235,11 +247,11 @@ export function deployContract(code: Uint8Array): DeployContractAction {
  */
 export function stake(
   amount: bigint,
-  publicKey: Ed25519PublicKey
+  publicKey: Ed25519PublicKey,
 ): { stake: { stake: bigint; publicKey: { ed25519Key: { data: number[] } } } }
 export function stake(
   amount: bigint,
-  publicKey: Secp256k1PublicKey
+  publicKey: Secp256k1PublicKey,
 ): { stake: { stake: bigint; publicKey: { secp256k1Key: { data: number[] } } } }
 export function stake(amount: bigint, publicKey: PublicKey): StakeAction
 export function stake(amount: bigint, publicKey: PublicKey): StakeAction {
@@ -256,7 +268,7 @@ export function stake(amount: bigint, publicKey: PublicKey): StakeAction {
  */
 export function addKey(
   publicKey: Ed25519PublicKey,
-  permission: AccessKeyPermissionBorsh
+  permission: AccessKeyPermissionBorsh,
 ): {
   addKey: {
     publicKey: { ed25519Key: { data: number[] } }
@@ -265,7 +277,7 @@ export function addKey(
 }
 export function addKey(
   publicKey: Secp256k1PublicKey,
-  permission: AccessKeyPermissionBorsh
+  permission: AccessKeyPermissionBorsh,
 ): {
   addKey: {
     publicKey: { secp256k1Key: { data: number[] } }
@@ -274,11 +286,11 @@ export function addKey(
 }
 export function addKey(
   publicKey: PublicKey,
-  permission: AccessKeyPermissionBorsh
+  permission: AccessKeyPermissionBorsh,
 ): AddKeyAction
 export function addKey(
   publicKey: PublicKey,
-  permission: AccessKeyPermissionBorsh
+  permission: AccessKeyPermissionBorsh,
 ): AddKeyAction {
   return {
     addKey: {
@@ -291,12 +303,12 @@ export function addKey(
 /**
  * Create a delete key action
  */
-export function deleteKey(
-  publicKey: Ed25519PublicKey
-): { deleteKey: { publicKey: { ed25519Key: { data: number[] } } } }
-export function deleteKey(
-  publicKey: Secp256k1PublicKey
-): { deleteKey: { publicKey: { secp256k1Key: { data: number[] } } } }
+export function deleteKey(publicKey: Ed25519PublicKey): {
+  deleteKey: { publicKey: { ed25519Key: { data: number[] } } }
+}
+export function deleteKey(publicKey: Secp256k1PublicKey): {
+  deleteKey: { publicKey: { secp256k1Key: { data: number[] } } }
+}
 export function deleteKey(publicKey: PublicKey): DeleteKeyAction
 export function deleteKey(publicKey: PublicKey): DeleteKeyAction {
   return {
@@ -311,12 +323,11 @@ export function deleteKey(publicKey: PublicKey): DeleteKeyAction {
  */
 export function deployGlobalContract(
   code: Uint8Array,
-  deployMode: GlobalContractDeployMode
+  deployMode: GlobalContractDeployMode,
 ): DeployGlobalContractAction {
   // Convert class instance to discriminated union
-  const deployModeConverted = deployMode.CodeHash !== undefined
-    ? { CodeHash: {} }
-    : { AccountId: {} }
+  const deployModeConverted =
+    deployMode.CodeHash !== undefined ? { CodeHash: {} } : { AccountId: {} }
 
   return {
     deployGlobalContract: {
@@ -330,12 +341,13 @@ export function deployGlobalContract(
  * Create a use global contract action
  */
 export function useGlobalContract(
-  contractIdentifier: GlobalContractIdentifier
+  contractIdentifier: GlobalContractIdentifier,
 ): UseGlobalContractAction {
   // Convert class instance to discriminated union
-  const identifierConverted = contractIdentifier.CodeHash !== undefined
-    ? { CodeHash: Array.from(contractIdentifier.CodeHash) as number[] }
-    : { AccountId: contractIdentifier.AccountId as string }
+  const identifierConverted =
+    contractIdentifier.CodeHash !== undefined
+      ? { CodeHash: Array.from(contractIdentifier.CodeHash) as number[] }
+      : { AccountId: contractIdentifier.AccountId as string }
 
   return {
     useGlobalContract: {
@@ -349,7 +361,7 @@ export function useGlobalContract(
  */
 export function signedDelegate(
   delegateAction: DelegateAction,
-  signature: import("./types.js").Signature
+  signature: import("./types.js").Signature,
 ): SignedDelegateAction {
   return {
     signedDelegate: {

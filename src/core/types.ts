@@ -79,8 +79,8 @@ export type Signer = (message: Uint8Array) => Promise<Signature>
  * - allowance: Optional allowance in yoctoNEAR
  */
 export type {
-  FunctionCallPermissionDetails,
   AccessKeyPermission,
+  FunctionCallPermissionDetails,
 } from "./rpc/rpc-schemas.js"
 
 // ==================== Transaction Types ====================
@@ -159,14 +159,14 @@ export interface SimulationResult {
  * - RpcErrorResponse: RPC error response structure
  */
 export type {
-  ViewFunctionCallResult,
-  AccountView,
-  AccessKeyView,
   AccessKeyInfoView,
-  StatusResponse,
-  GasPriceResponse,
   AccessKeyListResponse,
+  AccessKeyView,
+  AccountView,
+  GasPriceResponse,
   RpcErrorResponse,
+  StatusResponse,
+  ViewFunctionCallResult,
 } from "./rpc/rpc-schemas.js"
 
 // ==================== Client Configuration ====================

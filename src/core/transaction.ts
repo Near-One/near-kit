@@ -4,14 +4,14 @@
 
 import { base58 } from "@scure/base"
 import { parseGas, parseNearAmount } from "../utils/format.js"
+import * as actions from "./actions.js"
 import { DEFAULT_FUNCTION_CALL_GAS } from "./constants.js"
 import type { RpcClient } from "./rpc/rpc.js"
 import {
-  serializeTransaction,
-  serializeSignedTransaction,
   type AccessKeyPermissionBorsh,
+  serializeSignedTransaction,
+  serializeTransaction,
 } from "./schema.js"
-import * as actions from "./actions.js"
 import type {
   Action,
   FinalExecutionOutcome,
@@ -35,7 +35,7 @@ export class TransactionBuilder {
     signerId: string,
     rpc: RpcClient,
     keyStore: KeyStore,
-    signer?: Signer
+    signer?: Signer,
   ) {
     this.signerId = signerId
     this.actions = []
@@ -67,7 +67,7 @@ export class TransactionBuilder {
     contractId: string,
     methodName: string,
     args: object = {},
-    options: { gas?: string | number; attachedDeposit?: string | number } = {}
+    options: { gas?: string | number; attachedDeposit?: string | number } = {},
   ): this {
     const argsJson = JSON.stringify(args)
     const argsBytes = new TextEncoder().encode(argsJson)
@@ -81,7 +81,7 @@ export class TransactionBuilder {
       : "0"
 
     this.actions.push(
-      actions.functionCall(methodName, argsBytes, BigInt(gas), BigInt(deposit))
+      actions.functionCall(methodName, argsBytes, BigInt(gas), BigInt(deposit)),
     )
 
     if (!this.receiverId) {
@@ -145,7 +145,11 @@ export class TransactionBuilder {
   /**
    * Add an add key action
    */
-  addKey(accountId: string, publicKey: string, permission: AccessKeyPermissionBorsh): this {
+  addKey(
+    accountId: string,
+    publicKey: string,
+    permission: AccessKeyPermissionBorsh,
+  ): this {
     const pk: PublicKey = {
       keyType: 0,
       data: new Uint8Array(),
@@ -212,7 +216,7 @@ export class TransactionBuilder {
     const publicKey = keyPair.publicKey
     const accessKey = await this.rpc.getAccessKey(
       this.signerId,
-      publicKey.toString()
+      publicKey.toString(),
     )
 
     const status = await this.rpc.getStatus()

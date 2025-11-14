@@ -61,7 +61,7 @@ describe("RPC View Methods - Mainnet", () => {
     expect(typeof status.sync_info.syncing).toBe("boolean")
 
     console.log(
-      `✓ Mainnet status: chain=${status.chain_id}, height=${status.sync_info.latest_block_height}, validators=${status.validators.length}`
+      `✓ Mainnet status: chain=${status.chain_id}, height=${status.sync_info.latest_block_height}, validators=${status.validators.length}`,
     )
   }, 10000) // 10 second timeout
 
@@ -82,7 +82,7 @@ describe("RPC View Methods - Mainnet", () => {
     expect(BigInt(account.locked)).toBeGreaterThanOrEqual(0n)
 
     console.log(
-      `✓ Account '${MAINNET_ACCOUNT}': balance=${account.amount} yoctoNEAR, storage=${account.storage_usage} bytes`
+      `✓ Account '${MAINNET_ACCOUNT}': balance=${account.amount} yoctoNEAR, storage=${account.storage_usage} bytes`,
     )
   }, 10000)
 
@@ -104,7 +104,7 @@ describe("RPC View Methods - Mainnet", () => {
     const result: ViewFunctionCallResult = await rpc.viewFunction(
       WRAP_NEAR_CONTRACT,
       "ft_metadata",
-      {}
+      {},
     )
 
     // Verify response structure
@@ -118,13 +118,13 @@ describe("RPC View Methods - Mainnet", () => {
 
     // Decode the result to verify it's valid JSON
     const decoded = JSON.parse(
-      new TextDecoder().decode(new Uint8Array(result.result))
+      new TextDecoder().decode(new Uint8Array(result.result)),
     )
     expect(decoded).toBeDefined()
     expect(decoded.name).toBeDefined() // FT metadata should have name field
 
     console.log(
-      `✓ View call to ${WRAP_NEAR_CONTRACT}.ft_metadata(): ${decoded.name}`
+      `✓ View call to ${WRAP_NEAR_CONTRACT}.ft_metadata(): ${decoded.name}`,
     )
   }, 10000)
 })
@@ -147,7 +147,7 @@ describe("RPC View Methods - Testnet", () => {
     expect(status.sync_info.latest_block_height).toBeGreaterThan(0)
 
     console.log(
-      `✓ Testnet status: chain=${status.chain_id}, height=${status.sync_info.latest_block_height}`
+      `✓ Testnet status: chain=${status.chain_id}, height=${status.sync_info.latest_block_height}`,
     )
   }, 10000)
 
@@ -161,7 +161,7 @@ describe("RPC View Methods - Testnet", () => {
     expect(account.block_height).toBeGreaterThan(0)
 
     console.log(
-      `✓ Testnet account '${TESTNET_ACCOUNT}': balance=${account.amount} yoctoNEAR`
+      `✓ Testnet account '${TESTNET_ACCOUNT}': balance=${account.amount} yoctoNEAR`,
     )
   }, 10000)
 
@@ -207,7 +207,7 @@ describe("RPC Error Handling", () => {
       await rpc.viewFunction(
         MAINNET_ACCOUNT,
         "this_method_does_not_exist_12345",
-        {}
+        {},
       )
       // Should not reach here
       expect(false).toBe(true)

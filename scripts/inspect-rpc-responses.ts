@@ -110,9 +110,7 @@ try {
 
   // Also decode and show the result
   if (viewCall.result?.result) {
-    const decoded = JSON.parse(
-      Buffer.from(viewCall.result.result).toString()
-    )
+    const decoded = JSON.parse(Buffer.from(viewCall.result.result).toString())
     console.log("\nDecoded result:")
     console.log(JSON.stringify(decoded, null, 2))
   }
