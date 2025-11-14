@@ -6,7 +6,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { Near } from "../../src/core/near.js"
 import { Sandbox } from "../../src/sandbox/sandbox.js"
-import { generateKey } from "../../src/keys/index.js"
+import { generateKey } from "../../src/utils/key.js"
 
 describe("sendTransaction - RPC Response Validation", () => {
   let sandbox: Sandbox
@@ -14,7 +14,10 @@ describe("sendTransaction - RPC Response Validation", () => {
 
   beforeAll(async () => {
     sandbox = await Sandbox.start()
-    near = new Near({ network: sandbox })
+    near = new Near({
+      network: sandbox,
+      privateKey: sandbox.rootAccount.secretKey,
+    })
     console.log(`✓ Sandbox started at ${sandbox.rpcUrl}`)
   }, 120000)
 
@@ -265,14 +268,20 @@ describe("sendTransaction - RPC Response Validation", () => {
         .send()
 
       // Find CreateAccount action in transaction
+      // RPC returns CreateAccount as a string (no params) or object (with params)
       const createAccountAction = result.transaction.actions.find(
-        (action: any) => typeof action === "object" && "CreateAccount" in action
+        (action: any) =>
+          action === "CreateAccount" ||
+          (typeof action === "object" && "CreateAccount" in action)
       )
 
       expect(createAccountAction).toBeDefined()
-      expect(createAccountAction).toHaveProperty("CreateAccount")
+      expect(
+        createAccountAction === "CreateAccount" ||
+        (typeof createAccountAction === "object" && "CreateAccount" in createAccountAction)
+      ).toBe(true)
 
-      console.log("✓ CreateAccount action uses correct RPC format: { CreateAccount: {} }")
+      console.log(`✓ CreateAccount action uses correct RPC format: ${JSON.stringify(createAccountAction)}`)
     })
   })
 })

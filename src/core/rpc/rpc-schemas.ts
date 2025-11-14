@@ -245,8 +245,12 @@ export const ExecutionOutcomeWithIdSchema = z.object({
 
 /**
  * Action schemas - matches RPC response format
+ * Note: RPC returns actions with no parameters as strings (e.g., "CreateAccount")
+ * instead of objects (e.g., { "CreateAccount": {} })
  */
 export const ActionSchema = z.union([
+  // CreateAccount can be either a string or an object (when no params, RPC returns string)
+  z.literal("CreateAccount"),
   z.object({ CreateAccount: z.object({}) }),
   z.object({ Transfer: z.object({ deposit: z.string() }) }),
   z.object({
