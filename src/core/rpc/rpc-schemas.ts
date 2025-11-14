@@ -241,7 +241,7 @@ export const ExecutionOutcomeWithIdSchema = z.object({
  * Action schemas - matches RPC response format
  */
 export const ActionSchema = z.union([
-  z.literal("CreateAccount"),
+  z.object({ CreateAccount: z.object({}) }),
   z.object({ Transfer: z.object({ deposit: z.string() }) }),
   z.object({
     FunctionCall: z.object({
