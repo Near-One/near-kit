@@ -170,9 +170,23 @@ describe("sendTransaction - RPC Response Validation", () => {
 
   describe("Response schema validation", () => {
     test("should have correct RPC format fields", async () => {
+      // Create recipient account first
+      const recipientKey = generateKey()
+      const recipientId = `test-${Date.now()}.${sandbox.rootAccount.id}`
+
+      await near
+        .transaction(sandbox.rootAccount.id)
+        .createAccount(recipientId)
+        .transfer(recipientId, "5 NEAR")
+        .addKey(recipientKey.publicKey.toString(), {
+          type: "fullAccess",
+        })
+        .send()
+
+      // Now transfer to the existing account
       const result = await near
         .transaction(sandbox.rootAccount.id)
-        .transfer(`test-${Date.now()}.${sandbox.rootAccount.id}`, "1 NEAR")
+        .transfer(recipientId, "1 NEAR")
         .send()
 
       // Verify top-level fields

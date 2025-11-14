@@ -405,7 +405,27 @@ export class RpcClient {
       const failure = parsed.status.Failure
       const errorMessage = failure.error_message || failure.error_type || "Transaction execution failed"
 
-      // Check if this is a function call error by looking at receipts
+      // Check transaction_outcome first (direct contract failures without cross-contract calls)
+      if (
+        typeof parsed.transaction_outcome.outcome.status === "object" &&
+        "Failure" in parsed.transaction_outcome.outcome.status
+      ) {
+        const contractId = parsed.transaction_outcome.outcome.executor_id
+        const logs = parsed.transaction_outcome.outcome.logs
+        // Try to extract method name from transaction actions
+        const functionCallAction = parsed.transaction.actions.find(
+          action => typeof action === "object" && "FunctionCall" in action
+        )
+        const methodName = functionCallAction && typeof functionCallAction === "object" && "FunctionCall" in functionCallAction
+          ? functionCallAction.FunctionCall.method_name
+          : undefined
+
+        if (functionCallAction) {
+          throw new FunctionCallError(contractId, methodName, errorMessage, logs)
+        }
+      }
+
+      // Check receipts_outcome for cross-contract call failures
       const failedReceipt = parsed.receipts_outcome.find(
         receipt => typeof receipt.outcome.status === "object" && "Failure" in receipt.outcome.status
       )
@@ -424,7 +444,7 @@ export class RpcClient {
         throw new FunctionCallError(contractId, methodName, errorMessage, logs)
       }
 
-      // Generic transaction failure
+      // Generic transaction failure (not a function call)
       throw new InvalidTransactionError(errorMessage, failure)
     }
 
