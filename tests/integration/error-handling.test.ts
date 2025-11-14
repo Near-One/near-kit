@@ -219,8 +219,9 @@ describe("Error Handling - Error Properties", () => {
         expect(error).toHaveProperty("code")
         expect(error).toHaveProperty("name")
         expect(error).toHaveProperty("message")
+        // @ts-expect-error - error is unknown type, accessing properties for logging
         console.log(
-          `✓ ${testCase.name} has required properties: code=${(error as any).code}, name=${(error as any).name}`,
+          `✓ ${testCase.name} has required properties: code=${error.code}, name=${error.name}`,
         )
       }
     }

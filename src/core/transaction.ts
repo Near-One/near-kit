@@ -247,12 +247,16 @@ export class TransactionBuilder {
     // Serialize transaction using Borsh
     const serialized = serializeTransaction(transaction)
 
-    const keyPair = await this.keyStore.get(this.signerId)
-    if (!keyPair) {
-      throw new InvalidKeyError(`No key found for account: ${this.signerId}`)
-    }
-
-    const signature = keyPair.sign(serialized)
+    // Use custom signer if provided, otherwise fall back to keyStore
+    const signature = this._signer
+      ? await this._signer(serialized)
+      : await (async () => {
+          const keyPair = await this.keyStore.get(this.signerId)
+          if (!keyPair) {
+            throw new InvalidKeyError(`No key found for account: ${this.signerId}`)
+          }
+          return keyPair.sign(serialized)
+        })()
 
     const signedTx: SignedTransaction = {
       transaction,

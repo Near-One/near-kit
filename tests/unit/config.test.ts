@@ -67,7 +67,8 @@ describe("Network Configuration", () => {
 
   test("should reject invalid network preset", () => {
     expect(() => {
-      resolveNetworkConfig("invalid" as any)
+      // @ts-expect-error - testing invalid input
+      resolveNetworkConfig("invalid")
     }).toThrow()
   })
 
@@ -250,7 +251,8 @@ describe("Near Constructor", () => {
   test("should throw on invalid network", () => {
     expect(() => {
       new Near({
-        network: "invalid" as any,
+        // @ts-expect-error - testing invalid input
+        network: "invalid",
       })
     }).toThrow()
   })
@@ -305,6 +307,7 @@ describe("Config Validation Edge Cases", () => {
       },
     })
 
-    expect(Object.keys(config.keyStore as any)).toHaveLength(3)
+    // @ts-expect-error - accessing keyStore internal structure for testing
+    expect(Object.keys(config.keyStore)).toHaveLength(3)
   })
 })

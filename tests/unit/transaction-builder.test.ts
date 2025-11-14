@@ -21,8 +21,10 @@ describe("TransactionBuilder - Fluent API", () => {
     const builder = createBuilder().transfer("bob.near", "1")
 
     expect(builder).toBeInstanceOf(TransactionBuilder)
-    expect((builder as any).actions.length).toBe(1)
-    expect((builder as any).actions[0].transfer).toBeDefined()
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions.length).toBe(1)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].transfer).toBeDefined()
   })
 
   test("should chain function call action", () => {
@@ -32,8 +34,10 @@ describe("TransactionBuilder - Fluent API", () => {
     })
 
     expect(builder).toBeInstanceOf(TransactionBuilder)
-    expect((builder as any).actions.length).toBe(1)
-    expect((builder as any).actions[0].functionCall).toBeDefined()
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions.length).toBe(1)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].functionCall).toBeDefined()
   })
 
   test("should chain multiple actions", () => {
@@ -45,36 +49,45 @@ describe("TransactionBuilder - Fluent API", () => {
       })
       .transfer("dave.near", "2")
 
-    expect((builder as any).actions.length).toBe(3)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions.length).toBe(3)
   })
 
   test("should chain createAccount action", () => {
     const builder = createBuilder().createAccount("new-account.near")
 
-    expect((builder as any).actions.length).toBe(1)
-    expect((builder as any).actions[0].createAccount).toBeDefined()
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions.length).toBe(1)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].createAccount).toBeDefined()
   })
 
   test("should chain deleteAccount action", () => {
     const builder = createBuilder().deleteAccount("beneficiary.near")
 
-    expect((builder as any).actions.length).toBe(1)
-    expect((builder as any).actions[0].deleteAccount).toBeDefined()
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions.length).toBe(1)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].deleteAccount).toBeDefined()
   })
 
   test("should chain deployContract action", () => {
     const code = new Uint8Array([1, 2, 3, 4])
     const builder = createBuilder().deployContract("contract.near", code)
 
-    expect((builder as any).actions.length).toBe(1)
-    expect((builder as any).actions[0].deployContract).toBeDefined()
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions.length).toBe(1)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].deployContract).toBeDefined()
   })
 
   test("should chain stake action", () => {
     const builder = createBuilder().stake("ed25519:...", "100")
 
-    expect((builder as any).actions.length).toBe(1)
-    expect((builder as any).actions[0].stake).toBeDefined()
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions.length).toBe(1)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].stake).toBeDefined()
   })
 
   test("should return same builder instance for chaining", () => {
@@ -96,7 +109,8 @@ describe("TransactionBuilder - Gas Parsing", () => {
       { gas: "30000000000000" },
     )
 
-    const action = (builder as any).actions[0].functionCall
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
     expect(action.gas).toBe(30000000000000n)
   })
 
@@ -108,7 +122,8 @@ describe("TransactionBuilder - Gas Parsing", () => {
       { gas: 30000000000000 },
     )
 
-    const action = (builder as any).actions[0].functionCall
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
     expect(action.gas).toBe(30000000000000n)
   })
 
@@ -120,7 +135,8 @@ describe("TransactionBuilder - Gas Parsing", () => {
       { gas: "30 Tgas" },
     )
 
-    const action = (builder as any).actions[0].functionCall
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
     expect(action.gas).toBe(30000000000000n)
   })
 
@@ -132,7 +148,9 @@ describe("TransactionBuilder - Gas Parsing", () => {
     ]
 
     for (const builder of builders) {
-      const action = (builder as any).actions[0].functionCall
+      // @ts-expect-error - accessing private field for testing
+
+      const action = builder.actions[0].functionCall
       expect(action.gas).toBe(30000000000000n)
     }
   })
@@ -145,14 +163,16 @@ describe("TransactionBuilder - Gas Parsing", () => {
       { gas: "1.5 Tgas" },
     )
 
-    const action = (builder as any).actions[0].functionCall
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
     expect(action.gas).toBe(1500000000000n)
   })
 
   test("should use default gas when not specified", () => {
     const builder = createBuilder().functionCall("contract.near", "method", {})
 
-    const action = (builder as any).actions[0].functionCall
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
     expect(action.gas).toBe(30000000000000n) // DEFAULT_FUNCTION_CALL_GAS
   })
 })
@@ -161,14 +181,16 @@ describe("TransactionBuilder - Amount Parsing", () => {
   test("should parse transfer amount as string", () => {
     const builder = createBuilder().transfer("bob.near", "10")
 
-    const action = (builder as any).actions[0].transfer
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].transfer
     expect(action.deposit).toBe(10n)
   })
 
   test("should parse transfer amount as number", () => {
     const builder = createBuilder().transfer("bob.near", 10)
 
-    const action = (builder as any).actions[0].transfer
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].transfer
     expect(action.deposit).toBe(10n)
   })
 
@@ -180,7 +202,8 @@ describe("TransactionBuilder - Amount Parsing", () => {
       { attachedDeposit: "5" },
     )
 
-    const action = (builder as any).actions[0].functionCall
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
     expect(action.deposit).toBe(5n)
   })
 
@@ -192,21 +215,24 @@ describe("TransactionBuilder - Amount Parsing", () => {
       { attachedDeposit: 5 },
     )
 
-    const action = (builder as any).actions[0].functionCall
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
     expect(action.deposit).toBe(5n)
   })
 
   test("should use zero deposit when not specified", () => {
     const builder = createBuilder().functionCall("contract.near", "method", {})
 
-    const action = (builder as any).actions[0].functionCall
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
     expect(action.deposit).toBe(0n)
   })
 
   test("should parse stake amount", () => {
     const builder = createBuilder().stake("ed25519:...", "100")
 
-    const action = (builder as any).actions[0].stake
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].stake
     expect(action.stake).toBe(100n)
   })
 })
@@ -215,19 +241,22 @@ describe("TransactionBuilder - Receiver ID Management", () => {
   test("should set receiver ID from transfer", () => {
     const builder = createBuilder().transfer("bob.near", "1")
 
-    expect((builder as any).receiverId).toBe("bob.near")
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.receiverId).toBe("bob.near")
   })
 
   test("should set receiver ID from function call", () => {
     const builder = createBuilder().functionCall("contract.near", "method", {})
 
-    expect((builder as any).receiverId).toBe("contract.near")
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.receiverId).toBe("contract.near")
   })
 
   test("should set receiver ID from createAccount", () => {
     const builder = createBuilder().createAccount("new.near")
 
-    expect((builder as any).receiverId).toBe("new.near")
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.receiverId).toBe("new.near")
   })
 
   test("should set receiver ID from deployContract", () => {
@@ -236,7 +265,8 @@ describe("TransactionBuilder - Receiver ID Management", () => {
       new Uint8Array(),
     )
 
-    expect((builder as any).receiverId).toBe("contract.near")
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.receiverId).toBe("contract.near")
   })
 
   test("should keep first receiver ID when chaining", () => {
@@ -244,7 +274,8 @@ describe("TransactionBuilder - Receiver ID Management", () => {
       .transfer("bob.near", "1")
       .functionCall("contract.near", "method", {})
 
-    expect((builder as any).receiverId).toBe("bob.near")
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.receiverId).toBe("bob.near")
   })
 
   test("should not override receiver ID", () => {
@@ -253,7 +284,8 @@ describe("TransactionBuilder - Receiver ID Management", () => {
       .functionCall("contract2.near", "method", {})
       .transfer("alice.near", "1")
 
-    expect((builder as any).receiverId).toBe("contract1.near")
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.receiverId).toBe("contract1.near")
   })
 })
 
@@ -270,7 +302,8 @@ describe("TransactionBuilder - Action Arguments", () => {
       args,
     )
 
-    const action = (builder as any).actions[0].functionCall
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
     const decodedArgs = JSON.parse(new TextDecoder().decode(action.args))
     expect(decodedArgs).toEqual(args)
   })
@@ -278,7 +311,8 @@ describe("TransactionBuilder - Action Arguments", () => {
   test("should handle empty arguments", () => {
     const builder = createBuilder().functionCall("contract.near", "method")
 
-    const action = (builder as any).actions[0].functionCall
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
     const decodedArgs = JSON.parse(new TextDecoder().decode(action.args))
     expect(decodedArgs).toEqual({})
   })
@@ -298,7 +332,8 @@ describe("TransactionBuilder - Action Arguments", () => {
       args,
     )
 
-    const action = (builder as any).actions[0].functionCall
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
     const decodedArgs = JSON.parse(new TextDecoder().decode(action.args))
     expect(decodedArgs).toEqual(args)
   })
@@ -312,11 +347,16 @@ describe("TransactionBuilder - Complex Scenarios", () => {
       .deployContract("new.near", new Uint8Array([1, 2, 3]))
       .functionCall("new.near", "init", { owner: "alice.near" })
 
-    expect((builder as any).actions.length).toBe(4)
-    expect((builder as any).actions[0].createAccount).toBeDefined()
-    expect((builder as any).actions[1].transfer).toBeDefined()
-    expect((builder as any).actions[2].deployContract).toBeDefined()
-    expect((builder as any).actions[3].functionCall).toBeDefined()
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions.length).toBe(4)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].createAccount).toBeDefined()
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[1].transfer).toBeDefined()
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[2].deployContract).toBeDefined()
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[3].functionCall).toBeDefined()
   })
 
   test("should handle transaction with gas and deposit", () => {
@@ -334,11 +374,16 @@ describe("TransactionBuilder - Complex Scenarios", () => {
         { gas: 100000000000000, attachedDeposit: 2 },
       )
 
-    expect((builder as any).actions.length).toBe(2)
-    expect((builder as any).actions[0].functionCall.gas).toBe(50000000000000n)
-    expect((builder as any).actions[0].functionCall.deposit).toBe(1n)
-    expect((builder as any).actions[1].functionCall.gas).toBe(100000000000000n)
-    expect((builder as any).actions[1].functionCall.deposit).toBe(2n)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions.length).toBe(2)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].functionCall.gas).toBe(50000000000000n)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].functionCall.deposit).toBe(1n)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[1].functionCall.gas).toBe(100000000000000n)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[1].functionCall.deposit).toBe(2n)
   })
 
   test("should build transaction with all action types", () => {
@@ -350,7 +395,8 @@ describe("TransactionBuilder - Complex Scenarios", () => {
       .stake("ed25519:...", "100")
       .deleteAccount("beneficiary.near")
 
-    expect((builder as any).actions.length).toBe(6)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions.length).toBe(6)
   })
 })
 
@@ -360,15 +406,18 @@ describe("TransactionBuilder - Edge Cases", () => {
       .transfer("bob.near", "0")
       .functionCall("contract.near", "method", {}, { attachedDeposit: "0" })
 
-    expect((builder as any).actions[0].transfer.deposit).toBe(0n)
-    expect((builder as any).actions[1].functionCall.deposit).toBe(0n)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].transfer.deposit).toBe(0n)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[1].functionCall.deposit).toBe(0n)
   })
 
   test("should handle very large amounts", () => {
     const largeAmount = "999999999999999999999999"
     const builder = createBuilder().transfer("bob.near", largeAmount)
 
-    expect((builder as any).actions[0].transfer.deposit).toBe(
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].transfer.deposit).toBe(
       BigInt(largeAmount),
     )
   })
@@ -382,13 +431,16 @@ describe("TransactionBuilder - Edge Cases", () => {
       { gas: largeGas },
     )
 
-    expect((builder as any).actions[0].functionCall.gas).toBe(BigInt(largeGas))
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions[0].functionCall.gas).toBe(BigInt(largeGas))
   })
 
   test("should create empty transaction", () => {
     const builder = createBuilder()
 
-    expect((builder as any).actions.length).toBe(0)
-    expect((builder as any).signerId).toBe("alice.near")
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.actions.length).toBe(0)
+    // @ts-expect-error - accessing private field for testing
+    expect(builder.signerId).toBe("alice.near")
   })
 })
