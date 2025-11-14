@@ -52,6 +52,7 @@ import {
 import type {
   Action,
   FinalExecutionOutcome,
+  KeyPair,
   KeyStore,
   SendOptions,
   SignedTransaction,
@@ -102,6 +103,7 @@ export class TransactionBuilder {
   private rpc: RpcClient
   private keyStore: KeyStore
   private signer?: Signer
+  private keyPair?: KeyPair // KeyPair from signWith() for building transaction
   private wallet?: WalletConnection
   private defaultWaitUntil: TxExecutionStatus
 
@@ -370,6 +372,7 @@ export class TransactionBuilder {
       // Parse key and create signer
       // TypeScript ensures key is PrivateKey format, but we still validate at runtime
       const keyPair = parseKey(key)
+      this.keyPair = keyPair // Store for build() to use
       this.signer = async (message: Uint8Array) => keyPair.sign(message)
     } else {
       this.signer = key
@@ -389,8 +392,8 @@ export class TransactionBuilder {
       )
     }
 
-    // Get access key info for nonce and block hash
-    const keyPair = await this.keyStore.get(this.signerId)
+    // Get key pair - either from signWith() or keyStore
+    const keyPair = this.keyPair || (await this.keyStore.get(this.signerId))
     if (!keyPair) {
       throw new InvalidKeyError(`No key found for account: ${this.signerId}`)
     }
