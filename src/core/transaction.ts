@@ -33,6 +33,7 @@
 import { base58 } from "@scure/base"
 import { InvalidKeyError, NearError, SignatureError } from "../errors/index.js"
 import { parseKey, parsePublicKey } from "../utils/key.js"
+import { ED25519_KEY_PREFIX, SECP256K1_KEY_PREFIX } from "./constants.js"
 import {
   type Amount,
   type Gas,
@@ -328,7 +329,8 @@ export class TransactionBuilder {
    * The signerId (set via `.transaction()`) remains the same. To sign as a different
    * account, use `.transaction(otherAccountId)` instead.
    *
-   * @param key - Either a custom signer function or a private key string (e.g., 'ed25519:...')
+   * @param key - Either a custom signer function or a private key string
+   *              (e.g., 'ed25519:...' or 'secp256k1:...')
    *              Note: Account IDs are NOT supported - only private keys or Signer functions
    * @returns This builder instance for chaining
    *
@@ -361,9 +363,13 @@ export class TransactionBuilder {
   signWith(key: string | Signer): this {
     if (typeof key === "string") {
       // Check if it looks like an account ID (common mistake)
-      if (key.includes(".") && !key.startsWith("ed25519:")) {
+      const isPrivateKey =
+        key.startsWith(ED25519_KEY_PREFIX) ||
+        key.startsWith(SECP256K1_KEY_PREFIX)
+
+      if (key.includes(".") && !isPrivateKey) {
         throw new SignatureError(
-          `signWith() requires a private key (e.g., 'ed25519:...'), not an account ID ('${key}'). ` +
+          `signWith() requires a private key (e.g., 'ed25519:...' or 'secp256k1:...'), not an account ID ('${key}'). ` +
             `To sign as a different account, use .transaction('${key}') instead.`,
         )
       }
