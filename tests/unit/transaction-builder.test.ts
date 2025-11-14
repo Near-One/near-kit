@@ -7,6 +7,8 @@ import { describe, expect, test } from "bun:test"
 import { RpcClient } from "../../src/core/rpc/rpc.js"
 import { TransactionBuilder } from "../../src/core/transaction.js"
 import { InMemoryKeyStore } from "../../src/keys/keystore.js"
+import { Amount } from "../../src/utils/amount.js"
+import { Gas } from "../../src/utils/gas.js"
 
 // Valid test public key for testing
 const TEST_PUBLIC_KEY = "ed25519:DcA2MzgpJbrUATQLLceocVckhhAqrkingax4oJ9kZ847"
@@ -21,7 +23,7 @@ function createBuilder(): TransactionBuilder {
 
 describe("TransactionBuilder - Fluent API", () => {
   test("should chain transfer action", () => {
-    const builder = createBuilder().transfer("bob.near", "1")
+    const builder = createBuilder().transfer("bob.near", Amount.NEAR(1))
 
     expect(builder).toBeInstanceOf(TransactionBuilder)
     // @ts-expect-error - accessing private field for testing
@@ -45,12 +47,12 @@ describe("TransactionBuilder - Fluent API", () => {
 
   test("should chain multiple actions", () => {
     const builder = createBuilder()
-      .transfer("bob.near", "1")
+      .transfer("bob.near", Amount.NEAR(1))
       .functionCall("token.near", "ft_transfer", {
         receiver_id: "carol.near",
         amount: "100",
       })
-      .transfer("dave.near", "2")
+      .transfer("dave.near", Amount.NEAR(2))
 
     // @ts-expect-error - accessing private field for testing
     expect(builder.actions.length).toBe(3)
@@ -85,7 +87,7 @@ describe("TransactionBuilder - Fluent API", () => {
   })
 
   test("should chain stake action", () => {
-    const builder = createBuilder().stake(TEST_PUBLIC_KEY, "100")
+    const builder = createBuilder().stake(TEST_PUBLIC_KEY, Amount.NEAR(100))
 
     // @ts-expect-error - accessing private field for testing
     expect(builder.actions.length).toBe(1)
@@ -95,7 +97,7 @@ describe("TransactionBuilder - Fluent API", () => {
 
   test("should return same builder instance for chaining", () => {
     const builder = createBuilder()
-    const result1 = builder.transfer("bob.near", "1")
+    const result1 = builder.transfer("bob.near", Amount.NEAR(1))
     const result2 = result1.functionCall("contract.near", "method", {})
 
     expect(result1).toBe(builder)
@@ -104,7 +106,7 @@ describe("TransactionBuilder - Fluent API", () => {
 })
 
 describe("TransactionBuilder - Gas Parsing", () => {
-  test("should parse gas as string", () => {
+  test("should parse gas as raw number string", () => {
     const builder = createBuilder().functionCall(
       "contract.near",
       "method",
@@ -117,12 +119,12 @@ describe("TransactionBuilder - Gas Parsing", () => {
     expect(action.gas).toBe(30000000000000n)
   })
 
-  test("should parse gas as number", () => {
+  test("should parse Gas.Tgas() output", () => {
     const builder = createBuilder().functionCall(
       "contract.near",
       "method",
       {},
-      { gas: 30000000000000 },
+      { gas: Gas.Tgas(30) },
     )
 
     // @ts-expect-error - accessing private field for testing
@@ -181,46 +183,46 @@ describe("TransactionBuilder - Gas Parsing", () => {
 })
 
 describe("TransactionBuilder - Amount Parsing", () => {
-  test("should parse transfer amount as string", () => {
-    const builder = createBuilder().transfer("bob.near", "10")
+  test("should parse transfer amount with Amount.NEAR()", () => {
+    const builder = createBuilder().transfer("bob.near", Amount.NEAR(10))
 
     // @ts-expect-error - accessing private field for testing
     const action = builder.actions[0].transfer
-    expect(action.deposit).toBe(10n)
+    expect(action.deposit).toBe(10000000000000000000000000n)
   })
 
-  test("should parse transfer amount as number", () => {
-    const builder = createBuilder().transfer("bob.near", 10)
+  test("should parse transfer amount with string format", () => {
+    const builder = createBuilder().transfer("bob.near", "10 NEAR")
 
     // @ts-expect-error - accessing private field for testing
     const action = builder.actions[0].transfer
-    expect(action.deposit).toBe(10n)
+    expect(action.deposit).toBe(10000000000000000000000000n)
   })
 
-  test("should parse attached deposit as string", () => {
+  test("should parse attached deposit with Amount.NEAR()", () => {
     const builder = createBuilder().functionCall(
       "contract.near",
       "method",
       {},
-      { attachedDeposit: "5" },
+      { attachedDeposit: Amount.NEAR(5) },
     )
 
     // @ts-expect-error - accessing private field for testing
     const action = builder.actions[0].functionCall
-    expect(action.deposit).toBe(5n)
+    expect(action.deposit).toBe(5000000000000000000000000n)
   })
 
-  test("should parse attached deposit as number", () => {
+  test("should parse attached deposit with string format", () => {
     const builder = createBuilder().functionCall(
       "contract.near",
       "method",
       {},
-      { attachedDeposit: 5 },
+      { attachedDeposit: "5 NEAR" },
     )
 
     // @ts-expect-error - accessing private field for testing
     const action = builder.actions[0].functionCall
-    expect(action.deposit).toBe(5n)
+    expect(action.deposit).toBe(5000000000000000000000000n)
   })
 
   test("should use zero deposit when not specified", () => {
@@ -231,18 +233,18 @@ describe("TransactionBuilder - Amount Parsing", () => {
     expect(action.deposit).toBe(0n)
   })
 
-  test("should parse stake amount", () => {
-    const builder = createBuilder().stake(TEST_PUBLIC_KEY, "100")
+  test("should parse stake amount with Amount.NEAR()", () => {
+    const builder = createBuilder().stake(TEST_PUBLIC_KEY, Amount.NEAR(100))
 
     // @ts-expect-error - accessing private field for testing
     const action = builder.actions[0].stake
-    expect(action.stake).toBe(100n)
+    expect(action.stake).toBe(100000000000000000000000000n)
   })
 })
 
 describe("TransactionBuilder - Receiver ID Management", () => {
   test("should set receiver ID from transfer", () => {
-    const builder = createBuilder().transfer("bob.near", "1")
+    const builder = createBuilder().transfer("bob.near", Amount.NEAR(1))
 
     // @ts-expect-error - accessing private field for testing
     expect(builder.receiverId).toBe("bob.near")
@@ -274,7 +276,7 @@ describe("TransactionBuilder - Receiver ID Management", () => {
 
   test("should keep first receiver ID when chaining", () => {
     const builder = createBuilder()
-      .transfer("bob.near", "1")
+      .transfer("bob.near", Amount.NEAR(1))
       .functionCall("contract.near", "method", {})
 
     // @ts-expect-error - accessing private field for testing
@@ -285,7 +287,7 @@ describe("TransactionBuilder - Receiver ID Management", () => {
     const builder = createBuilder()
       .functionCall("contract1.near", "method", {})
       .functionCall("contract2.near", "method", {})
-      .transfer("alice.near", "1")
+      .transfer("alice.near", Amount.NEAR(1))
 
     // @ts-expect-error - accessing private field for testing
     expect(builder.receiverId).toBe("contract1.near")
@@ -346,7 +348,7 @@ describe("TransactionBuilder - Complex Scenarios", () => {
   test("should build multi-action transaction", () => {
     const builder = createBuilder()
       .createAccount("new.near")
-      .transfer("new.near", "10")
+      .transfer("new.near", Amount.NEAR(10))
       .deployContract("new.near", new Uint8Array([1, 2, 3]))
       .functionCall("new.near", "init", { owner: "alice.near" })
 
@@ -368,13 +370,13 @@ describe("TransactionBuilder - Complex Scenarios", () => {
         "contract.near",
         "method1",
         { arg: "value1" },
-        { gas: "50 Tgas", attachedDeposit: "1" },
+        { gas: "50 Tgas", attachedDeposit: Amount.NEAR(1) },
       )
       .functionCall(
         "contract.near",
         "method2",
         { arg: "value2" },
-        { gas: 100000000000000, attachedDeposit: 2 },
+        { gas: "100 Tgas", attachedDeposit: Amount.NEAR(2) },
       )
 
     // @ts-expect-error - accessing private field for testing
@@ -382,20 +384,20 @@ describe("TransactionBuilder - Complex Scenarios", () => {
     // @ts-expect-error - accessing private field for testing
     expect(builder.actions[0].functionCall.gas).toBe(50000000000000n)
     // @ts-expect-error - accessing private field for testing
-    expect(builder.actions[0].functionCall.deposit).toBe(1n)
+    expect(builder.actions[0].functionCall.deposit).toBe(1000000000000000000000000n)
     // @ts-expect-error - accessing private field for testing
     expect(builder.actions[1].functionCall.gas).toBe(100000000000000n)
     // @ts-expect-error - accessing private field for testing
-    expect(builder.actions[1].functionCall.deposit).toBe(2n)
+    expect(builder.actions[1].functionCall.deposit).toBe(2000000000000000000000000n)
   })
 
   test("should build transaction with all action types", () => {
     const builder = createBuilder()
       .createAccount("new.near")
-      .transfer("new.near", "10")
+      .transfer("new.near", Amount.NEAR(10))
       .deployContract("new.near", new Uint8Array())
       .functionCall("new.near", "init", {})
-      .stake(TEST_PUBLIC_KEY, "100")
+      .stake(TEST_PUBLIC_KEY, Amount.NEAR(100))
       .deleteAccount("beneficiary.near")
 
     // @ts-expect-error - accessing private field for testing
@@ -406,8 +408,10 @@ describe("TransactionBuilder - Complex Scenarios", () => {
 describe("TransactionBuilder - Edge Cases", () => {
   test("should handle zero amounts", () => {
     const builder = createBuilder()
-      .transfer("bob.near", "0")
-      .functionCall("contract.near", "method", {}, { attachedDeposit: "0" })
+      .transfer("bob.near", Amount.NEAR(0))
+      .functionCall("contract.near", "method", {}, {
+        attachedDeposit: Amount.NEAR(0),
+      })
 
     // @ts-expect-error - accessing private field for testing
     expect(builder.actions[0].transfer.deposit).toBe(0n)
@@ -415,12 +419,15 @@ describe("TransactionBuilder - Edge Cases", () => {
     expect(builder.actions[1].functionCall.deposit).toBe(0n)
   })
 
-  test("should handle very large amounts", () => {
-    const largeAmount = "999999999999999999999999"
-    const builder = createBuilder().transfer("bob.near", largeAmount)
+  test("should handle very large amounts with yocto", () => {
+    const largeYocto = "999999999999999999999999"
+    const builder = createBuilder().transfer(
+      "bob.near",
+      Amount.yocto(largeYocto),
+    )
 
     // @ts-expect-error - accessing private field for testing
-    expect(builder.actions[0].transfer.deposit).toBe(BigInt(largeAmount))
+    expect(builder.actions[0].transfer.deposit).toBe(BigInt(largeYocto))
   })
 
   test("should handle very large gas values", () => {
