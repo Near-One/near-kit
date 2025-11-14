@@ -51,7 +51,6 @@ const near = new Near({ network: 'testnet' });
 const near = new Near({
   network: 'testnet',
   privateKey: 'ed25519:...',
-  autoGas: true,
 });
 ```
 
