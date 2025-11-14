@@ -1,10 +1,38 @@
 /**
- * Transaction builder for creating and sending NEAR transactions
+ * Fluent API for building and sending NEAR transactions.
+ *
+ * Allows chaining multiple actions (transfers, function calls, account creation, etc.)
+ * into a single atomic transaction. All actions either succeed together or fail together.
+ *
+ * The builder is created via {@link Near.transaction} with a signer account ID. This
+ * account must have signing credentials available (via keyStore, privateKey, custom
+ * signer, or wallet connection).
+ *
+ * @example
+ * ```typescript
+ * // Single action
+ * await near.transaction('alice.near')
+ *   .transfer('bob.near', '10 NEAR')
+ *   .send()
+ *
+ * // Multiple actions (atomic)
+ * await near.transaction('alice.near')
+ *   .createAccount('sub.alice.near')
+ *   .transfer('sub.alice.near', '5 NEAR')
+ *   .addKey(newKey, { type: 'fullAccess' })
+ *   .send()
+ * ```
+ *
+ * @remarks
+ * - The `signerId` (set via `Near.transaction()`) is the account that signs and pays for gas
+ * - All actions execute in the order they are added
+ * - Transaction is only sent when `.send()` is called
+ * - Use `.build()` to get unsigned transaction, or `.simulate()` to test without sending
  */
 
 import { base58 } from "@scure/base"
 import { InvalidKeyError, NearError, SignatureError } from "../errors/index.js"
-import { parsePublicKey } from "../utils/key.js"
+import { parseKey, parsePublicKey } from "../utils/key.js"
 import {
   type Amount,
   type Gas,
@@ -286,13 +314,50 @@ export class TransactionBuilder {
   }
 
   /**
-   * Override the signer for this transaction
+   * Override the signing function for this specific transaction.
+   *
+   * Use this to sign a transaction with a different signer than the one
+   * configured in the Near client. Useful for:
+   *
+   * - Multi-account scenarios (different hardware wallet per account)
+   * - Testing with mock signers
+   * - One-off custom signing logic
+   * - Signing with a specific private key
+   *
+   * @param key - Either a custom signer function or a private key string (e.g., 'ed25519:...')
+   * @returns This builder instance for chaining
+   *
+   * @example
+   * ```typescript
+   * // Override with different hardware wallet
+   * await near.transaction('alice.near')
+   *   .signWith(aliceHardwareWallet)
+   *   .transfer('bob.near', '5 NEAR')
+   *   .send()
+   *
+   * // Sign with specific private key
+   * await near.transaction('alice.near')
+   *   .signWith('ed25519:...')
+   *   .transfer('bob.near', '1 NEAR')
+   *   .send()
+   *
+   * // Mock signer for testing
+   * const mockSigner: Signer = async (msg) => ({
+   *   keyType: KeyType.ED25519,
+   *   data: new Uint8Array(64)
+   * })
+   *
+   * await near.transaction('test.near')
+   *   .signWith(mockSigner)
+   *   .transfer('receiver.near', '1')
+   *   .send()
+   * ```
    */
   signWith(key: string | Signer): this {
     if (typeof key === "string") {
       // Parse key and create signer
-      // This would require parseKey implementation
-      throw new SignatureError("String key signing not yet implemented")
+      const keyPair = parseKey(key)
+      this.signer = async (message: Uint8Array) => keyPair.sign(message)
     } else {
       this.signer = key
     }
