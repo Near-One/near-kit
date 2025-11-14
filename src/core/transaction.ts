@@ -39,6 +39,7 @@ import {
   isPrivateKey,
   normalizeAmount,
   normalizeGas,
+  type PrivateKey,
 } from "../utils/validation.js"
 import * as actions from "./actions.js"
 import { DEFAULT_FUNCTION_CALL_GAS } from "./constants.js"
@@ -331,7 +332,7 @@ export class TransactionBuilder {
    *
    * @param key - Either a custom signer function or a private key string
    *              (e.g., 'ed25519:...' or 'secp256k1:...')
-   *              Note: Account IDs are NOT supported - only private keys or Signer functions
+   *              Type-safe: TypeScript will enforce the correct format at compile time
    * @returns This builder instance for chaining
    *
    * @example
@@ -342,11 +343,15 @@ export class TransactionBuilder {
    *   .transfer('bob.near', '5 NEAR')
    *   .send()
    *
-   * // Sign with specific private key
+   * // Sign with specific private key (type-safe)
    * await near.transaction('alice.near')
-   *   .signWith('ed25519:...')
+   *   .signWith('ed25519:...')  // ✅ TypeScript ensures correct format
    *   .transfer('bob.near', '1 NEAR')
    *   .send()
+   *
+   * // TypeScript will catch mistakes at compile time:
+   * await near.transaction('alice.near')
+   *   .signWith('alice.near')  // ❌ Type error: not a PrivateKey
    *
    * // Mock signer for testing
    * const mockSigner: Signer = async (msg) => ({
@@ -360,17 +365,10 @@ export class TransactionBuilder {
    *   .send()
    * ```
    */
-  signWith(key: string | Signer): this {
+  signWith(key: PrivateKey | Signer): this {
     if (typeof key === "string") {
-      // Check if it looks like an account ID (common mistake)
-      if (key.includes(".") && !isPrivateKey(key)) {
-        throw new SignatureError(
-          `signWith() requires a private key (e.g., 'ed25519:...' or 'secp256k1:...'), not an account ID ('${key}'). ` +
-            `To sign as a different account, use .transaction('${key}') instead.`,
-        )
-      }
-
       // Parse key and create signer
+      // TypeScript ensures key is PrivateKey format, but we still validate at runtime
       const keyPair = parseKey(key)
       this.signer = async (message: Uint8Array) => keyPair.sign(message)
     } else {

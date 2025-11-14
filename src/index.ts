@@ -72,6 +72,7 @@ export {
   parseGas,
   parseKey,
   parseSeedPhrase,
+  type PrivateKey,
   validatePrivateKey,
 } from "./utils/index.js"
 // Wallet adapters

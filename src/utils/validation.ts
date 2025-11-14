@@ -80,6 +80,25 @@ export type PublicKeyString = z.infer<typeof PublicKeySchema>
 // ==================== Private Key Schema ====================
 
 /**
+ * Type-safe private key string using template literal types.
+ *
+ * Provides compile-time type safety for private keys.
+ * Accepts keys in the format "ed25519:..." or "secp256k1:..." only.
+ *
+ * @example
+ * ```typescript
+ * const key: PrivateKey = 'ed25519:...'  // ✅ Valid
+ * const key: PrivateKey = 'alice.near'   // ❌ Type error at compile time
+ *
+ * // Function signature ensures type safety
+ * function signWith(key: PrivateKey) { ... }
+ * signWith('ed25519:abc')    // ✅ Valid
+ * signWith('alice.near')     // ❌ Type error
+ * ```
+ */
+export type PrivateKey = `ed25519:${string}` | `secp256k1:${string}`
+
+/**
  * Schema for validating NEAR private keys
  *
  * Supports:

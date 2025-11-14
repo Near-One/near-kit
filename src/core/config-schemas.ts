@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod"
-import { PrivateKeySchema } from "../utils/validation.js"
+import { type PrivateKey, PrivateKeySchema } from "../utils/validation.js"
 import { NETWORK_PRESETS } from "./constants.js"
 
 // ==================== Network Config Schema ====================
@@ -93,7 +93,11 @@ export const NearConfigSchema = z.object({
   defaultWaitUntil: TxExecutionStatusSchema.optional(),
 })
 
-export type NearConfig = z.infer<typeof NearConfigSchema>
+// Type override to use template literal type for better type safety
+type NearConfigBase = z.infer<typeof NearConfigSchema>
+export type NearConfig = Omit<NearConfigBase, "privateKey"> & {
+  privateKey?: PrivateKey | Uint8Array
+}
 
 // ==================== Helper Functions ====================
 
