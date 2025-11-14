@@ -322,13 +322,14 @@ export const TransactionSchema = z.object({
 
 /**
  * Final execution outcome schema - the response from send_tx
+ * Note: When wait_until is NONE, transaction/transaction_outcome/receipts_outcome are undefined
  */
 export const FinalExecutionOutcomeSchema = z.object({
   final_execution_status: TxExecutionStatusSchema,
   status: ExecutionStatusSchema,
-  transaction: TransactionSchema,
-  transaction_outcome: ExecutionOutcomeWithIdSchema,
-  receipts_outcome: z.array(ExecutionOutcomeWithIdSchema),
+  transaction: TransactionSchema.optional(),
+  transaction_outcome: ExecutionOutcomeWithIdSchema.optional(),
+  receipts_outcome: z.array(ExecutionOutcomeWithIdSchema).optional(),
 })
 
 /**

@@ -435,6 +435,7 @@ export class RpcClient {
 
       // Check transaction_outcome first (direct contract failures without cross-contract calls)
       if (
+        parsed.transaction_outcome &&
         typeof parsed.transaction_outcome.outcome.status === "object" &&
         "Failure" in parsed.transaction_outcome.outcome.status
       ) {
@@ -445,7 +446,7 @@ export class RpcClient {
           const contractId = parsed.transaction_outcome.outcome.executor_id
           const logs = parsed.transaction_outcome.outcome.logs
           // Try to extract method name from transaction actions
-          const functionCallAction = parsed.transaction.actions.find(
+          const functionCallAction = parsed.transaction?.actions.find(
             action => typeof action === "object" && "FunctionCall" in action
           )
           const methodName = functionCallAction && typeof functionCallAction === "object" && "FunctionCall" in functionCallAction
@@ -460,7 +461,7 @@ export class RpcClient {
       }
 
       // Check receipts_outcome for cross-contract call failures
-      const failedReceipt = parsed.receipts_outcome.find(
+      const failedReceipt = parsed.receipts_outcome?.find(
         receipt => typeof receipt.outcome.status === "object" && "Failure" in receipt.outcome.status
       )
 
@@ -472,7 +473,7 @@ export class RpcClient {
           const contractId = failedReceipt.outcome.executor_id
           const logs = failedReceipt.outcome.logs
           // Try to extract method name from transaction actions
-          const functionCallAction = parsed.transaction.actions.find(
+          const functionCallAction = parsed.transaction?.actions.find(
             action => typeof action === "object" && "FunctionCall" in action
           )
           const methodName = functionCallAction && typeof functionCallAction === "object" && "FunctionCall" in functionCallAction
