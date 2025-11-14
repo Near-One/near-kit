@@ -3,6 +3,8 @@
  */
 
 import { describe, expect, test } from "bun:test"
+import { Amount } from "../../src/utils/amount.js"
+import { Gas } from "../../src/utils/gas.js"
 import { generateKey } from "../../src/utils/key.js"
 import {
   AccountIdSchema,
@@ -134,30 +136,41 @@ describe("Public Key Schema", () => {
 })
 
 describe("Amount Schema", () => {
-  test("should parse string amounts", () => {
-    expect(AmountSchema.parse("10")).toBe("10")
-    expect(AmountSchema.parse("100")).toBe("100")
-    expect(AmountSchema.parse("1000000")).toBe("1000000")
+  test("should parse NEAR amounts with explicit unit", () => {
+    expect(AmountSchema.parse("10 NEAR")).toBe("10000000000000000000000000")
+    expect(AmountSchema.parse("100 NEAR")).toBe("100000000000000000000000000")
+    expect(AmountSchema.parse("1 NEAR")).toBe("1000000000000000000000000")
   })
 
-  test("should parse number amounts", () => {
-    expect(AmountSchema.parse(10)).toBe("10")
-    expect(AmountSchema.parse(100)).toBe("100")
-    expect(AmountSchema.parse(1.5)).toBe("1") // Floors decimals
+  test("should parse yocto amounts", () => {
+    expect(AmountSchema.parse("10 yocto")).toBe("10")
+    expect(AmountSchema.parse("100 yocto")).toBe("100")
+    expect(AmountSchema.parse("1000000 yocto")).toBe("1000000")
   })
 
-  test("should parse bigint amounts", () => {
-    expect(AmountSchema.parse(10n)).toBe("10")
-    expect(AmountSchema.parse(100n)).toBe("100")
-    expect(AmountSchema.parse(1000000n)).toBe("1000000")
+  test("should parse Amount.NEAR() output", () => {
+    expect(AmountSchema.parse(Amount.NEAR(10))).toBe(
+      "10000000000000000000000000",
+    )
+    expect(AmountSchema.parse(Amount.NEAR(100))).toBe(
+      "100000000000000000000000000",
+    )
+    expect(AmountSchema.parse(Amount.NEAR(1.5))).toBe(
+      "1500000000000000000000000",
+    )
   })
 
-  test("should convert NEAR suffix to yoctoNEAR", () => {
+  test("should parse Amount.yocto() output", () => {
+    expect(AmountSchema.parse(Amount.yocto(10n))).toBe("10")
+    expect(AmountSchema.parse(Amount.yocto("100"))).toBe("100")
+    expect(AmountSchema.parse(Amount.yocto(1000000n))).toBe("1000000")
+  })
+
+  test("should convert NEAR suffix to yoctoNEAR (case insensitive)", () => {
     // 1 NEAR = 10^24 yoctoNEAR
     expect(AmountSchema.parse("10 NEAR")).toBe("10000000000000000000000000")
     expect(AmountSchema.parse("10 near")).toBe("10000000000000000000000000")
-    expect(AmountSchema.parse("10 N")).toBe("10000000000000000000000000")
-    expect(AmountSchema.parse("10NEAR")).toBe("10000000000000000000000000")
+    expect(AmountSchema.parse("10 Near")).toBe("10000000000000000000000000")
   })
 
   test("should convert decimal NEAR to yoctoNEAR with precision", () => {
@@ -175,34 +188,29 @@ describe("Amount Schema", () => {
     )
   })
 
-  test("should handle decimal strings", () => {
-    expect(AmountSchema.parse("1.5")).toBe("1")
-    expect(AmountSchema.parse("10.99")).toBe("10")
+  test("should reject bare numbers (without unit)", () => {
+    expect(() => AmountSchema.parse("10")).toThrow(/Ambiguous amount/)
+    expect(() => AmountSchema.parse("1.5")).toThrow(/Ambiguous amount/)
+    expect(() => AmountSchema.parse("1000")).toThrow(/Ambiguous amount/)
   })
 
   test("should reject negative amounts", () => {
-    expect(() => AmountSchema.parse(-10)).toThrow()
-    expect(() => AmountSchema.parse("-10")).toThrow()
+    expect(() => AmountSchema.parse("-10 NEAR")).toThrow(/Invalid amount/)
+    expect(() => AmountSchema.parse("-10 yocto")).toThrow(/Invalid amount/)
   })
 
   test("should reject invalid string amounts", () => {
     expect(() => AmountSchema.parse("abc")).toThrow(/Invalid amount/)
     expect(() => AmountSchema.parse("")).toThrow(/Invalid amount/)
+    expect(() => AmountSchema.parse("10 USD")).toThrow(/Invalid amount/)
   })
 
-  test("should reject NaN", () => {
-    expect(() => AmountSchema.parse(Number.NaN)).toThrow()
-  })
-
-  test("should reject Infinity", () => {
-    expect(() => AmountSchema.parse(Number.POSITIVE_INFINITY)).toThrow()
-  })
-
-  test("normalizeAmount() should normalize various formats", () => {
-    expect(normalizeAmount("1000")).toBe("1000")
-    expect(normalizeAmount(1000)).toBe("1000")
-    expect(normalizeAmount(1000n)).toBe("1000")
+  test("normalizeAmount() should normalize with explicit units", () => {
     expect(normalizeAmount("10 NEAR")).toBe("10000000000000000000000000")
+    expect(normalizeAmount("1000 yocto")).toBe("1000")
+    expect(normalizeAmount(Amount.NEAR(10))).toBe(
+      "10000000000000000000000000",
+    )
   })
 })
 
@@ -212,21 +220,16 @@ describe("Gas Schema", () => {
     expect(GasSchema.parse("100")).toBe("100")
   })
 
-  test("should parse number gas amounts", () => {
-    expect(GasSchema.parse(30000000000000)).toBe("30000000000000")
-    expect(GasSchema.parse(100)).toBe("100")
+  test("should parse Gas.Tgas() output", () => {
+    expect(GasSchema.parse(Gas.Tgas(30))).toBe("30000000000000")
+    expect(GasSchema.parse(Gas.Tgas(300))).toBe("300000000000000")
+    expect(GasSchema.parse(Gas.Tgas(1.5))).toBe("1500000000000")
   })
 
-  test("should parse bigint gas amounts", () => {
-    expect(GasSchema.parse(30000000000000n)).toBe("30000000000000")
-    expect(GasSchema.parse(100n)).toBe("100")
-  })
-
-  test("should parse Tgas suffix", () => {
+  test("should parse Tgas format (case insensitive)", () => {
     expect(GasSchema.parse("30 Tgas")).toBe("30000000000000")
     expect(GasSchema.parse("30 TGas")).toBe("30000000000000")
     expect(GasSchema.parse("30 tgas")).toBe("30000000000000")
-    expect(GasSchema.parse("30Tgas")).toBe("30000000000000")
   })
 
   test("should handle decimal Tgas values", () => {
@@ -235,8 +238,8 @@ describe("Gas Schema", () => {
   })
 
   test("should reject negative gas", () => {
-    expect(() => GasSchema.parse(-100)).toThrow()
-    expect(() => GasSchema.parse("-100")).toThrow()
+    expect(() => GasSchema.parse("-30 Tgas")).toThrow(/Invalid gas/)
+    expect(() => GasSchema.parse("-100")).toThrow(/Invalid gas/)
   })
 
   test("should reject invalid string gas", () => {
@@ -244,37 +247,29 @@ describe("Gas Schema", () => {
     expect(() => GasSchema.parse("")).toThrow(/Invalid gas/)
   })
 
-  test("should reject NaN", () => {
-    expect(() => GasSchema.parse(Number.NaN)).toThrow()
-  })
-
-  test("should reject Infinity", () => {
-    expect(() => GasSchema.parse(Number.POSITIVE_INFINITY)).toThrow()
-  })
-
-  test("normalizeGas() should normalize various formats", () => {
+  test("normalizeGas() should normalize with explicit units", () => {
     expect(normalizeGas("30 Tgas")).toBe("30000000000000")
-    expect(normalizeGas(30000000000000)).toBe("30000000000000")
-    expect(normalizeGas(30000000000000n)).toBe("30000000000000")
+    expect(normalizeGas("30000000000000")).toBe("30000000000000")
+    expect(normalizeGas(Gas.Tgas(30))).toBe("30000000000000")
   })
 })
 
 describe("Edge Cases", () => {
   test("should handle zero values", () => {
-    expect(AmountSchema.parse(0)).toBe("0")
-    expect(AmountSchema.parse("0")).toBe("0")
-    expect(AmountSchema.parse(0n)).toBe("0")
+    expect(AmountSchema.parse("0 NEAR")).toBe("0")
+    expect(AmountSchema.parse("0 yocto")).toBe("0")
+    expect(AmountSchema.parse(Amount.NEAR(0))).toBe("0")
 
-    expect(GasSchema.parse(0)).toBe("0")
+    expect(GasSchema.parse("0 Tgas")).toBe("0")
     expect(GasSchema.parse("0")).toBe("0")
-    expect(GasSchema.parse(0n)).toBe("0")
+    expect(GasSchema.parse(Gas.Tgas(0))).toBe("0")
   })
 
-  test("should handle very large numbers as strings", () => {
+  test("should handle very large numbers as yocto", () => {
     const large = "999999999999999999999999"
-    // When passed as string, precision is preserved
-    expect(AmountSchema.parse(large)).toBe(large)
-    expect(GasSchema.parse(large)).toBe(large)
+    // Large numbers must have unit
+    expect(AmountSchema.parse(`${large} yocto`)).toBe(large)
+    expect(GasSchema.parse(large)).toBe(large) // Gas accepts raw numbers
   })
 
   test("should handle whitespace in amounts", () => {

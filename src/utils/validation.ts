@@ -10,6 +10,8 @@ import {
   MIN_ACCOUNT_ID_LENGTH,
   SECP256K1_KEY_PREFIX,
 } from "../core/constants.js"
+import { parseAmount } from "./amount.js"
+import { parseGas } from "./gas.js"
 
 // ==================== Base58 Validation ====================
 
@@ -78,69 +80,18 @@ export type PublicKeyString = z.infer<typeof PublicKeySchema>
 // ==================== Amount Schema ====================
 
 /**
- * Schema for NEAR amounts
+ * Schema for NEAR amounts with explicit units
  *
  * Accepts:
- * - String: "10", "1.5", "10 NEAR"
- * - Number: 10, 1.5
- * - BigInt: 10n
+ * - String with unit: "10 NEAR", "1000000 yocto"
+ * - Created via Amount.NEAR(10) or Amount.yocto(1000000n)
  *
- * Normalizes to yoctoNEAR string
+ * Rejects bare numbers to prevent unit confusion.
+ * Normalizes to yoctoNEAR string.
  */
-export const AmountSchema = z
-  .union([z.string(), z.number(), z.bigint()])
-  .transform((amount): string => {
-    // BigInt: already in yoctoNEAR (base unit)
-    if (typeof amount === "bigint") {
-      return amount.toString()
-    }
-
-    // Number: treat as yoctoNEAR (base unit)
-    if (typeof amount === "number") {
-      if (!Number.isFinite(amount)) {
-        throw new Error("Amount must be a finite number")
-      }
-      if (amount < 0) {
-        throw new Error("Amount must be non-negative")
-      }
-      return BigInt(Math.floor(amount)).toString()
-    }
-
-    // String: check if it has NEAR/N suffix
-    const hasSuffix = /\s*(NEAR|near|N|n)$/i.test(amount)
-    const stripped = amount.replace(/\s*(NEAR|near|N|n)$/i, "").trim()
-
-    // Check if it's a valid number format
-    if (!/^\d+(\.\d+)?$/.test(stripped)) {
-      throw new Error(`Invalid amount: ${amount}`)
-    }
-
-    if (hasSuffix) {
-      // String with suffix: convert NEAR to yoctoNEAR (1 NEAR = 10^24 yoctoNEAR)
-      // Split into integer and fractional parts to preserve precision
-      const parts = stripped.split(".")
-      const integerPart = parts[0] ?? "0"
-      const fractionalPart = (parts[1] || "").padEnd(24, "0").slice(0, 24)
-
-      if (integerPart.startsWith("-")) {
-        throw new Error("Amount must be non-negative")
-      }
-
-      // Combine: integerPart * 10^24 + fractionalPart
-      const yoctoNear = BigInt(integerPart + fractionalPart)
-      return yoctoNear.toString()
-    } else {
-      // String without suffix: treat as yoctoNEAR (base unit)
-      const parts = stripped.split(".")
-      const integerPart = parts[0] ?? "0"
-
-      if (integerPart.startsWith("-")) {
-        throw new Error("Amount must be non-negative")
-      }
-
-      return integerPart
-    }
-  })
+export const AmountSchema = z.string().transform((amount): string => {
+  return parseAmount(amount)
+})
 
 export type Amount = z.input<typeof AmountSchema>
 
@@ -150,58 +101,14 @@ export type Amount = z.input<typeof AmountSchema>
  * Schema for gas amounts
  *
  * Accepts:
- * - String: "30 Tgas", "30000000000000"
- * - Number: 30000000000000
- * - BigInt: 30000000000000n
+ * - String with unit: "30 Tgas", Gas.Tgas(30)
+ * - Raw gas number strings for advanced use
  *
- * Normalizes to gas string
+ * Normalizes to raw gas string.
  */
-export const GasSchema = z
-  .union([z.string(), z.number(), z.bigint()])
-  .transform((gas): string => {
-    if (typeof gas === "bigint") {
-      return gas.toString()
-    }
-
-    if (typeof gas === "number") {
-      if (!Number.isFinite(gas)) {
-        throw new Error("Gas must be a finite number")
-      }
-      if (gas < 0) {
-        throw new Error("Gas must be non-negative")
-      }
-      return BigInt(Math.floor(gas)).toString()
-    }
-
-    // String: check for Tgas/TGas suffix
-    const tgasMatch = gas.match(/^(\d+(?:\.\d+)?)\s*(Tgas|TGas|tgas)/i)
-    if (tgasMatch?.[1]) {
-      const tgas = parseFloat(tgasMatch[1])
-      if (Number.isNaN(tgas)) {
-        throw new Error(`Invalid gas amount: ${gas}`)
-      }
-      // Convert Tgas to gas (1 Tgas = 10^12 gas)
-      return BigInt(Math.floor(tgas * 1e12)).toString()
-    }
-
-    // Otherwise, treat as raw gas number string
-    const stripped = gas.trim()
-
-    // Check if it's a valid number format
-    if (!/^\d+(\.\d+)?$/.test(stripped)) {
-      throw new Error(`Invalid gas amount: ${gas}`)
-    }
-
-    // Split on decimal point and floor the result
-    const parts = stripped.split(".")
-    const integerPart = parts[0] ?? "0"
-
-    if (integerPart.startsWith("-")) {
-      throw new Error("Gas must be non-negative")
-    }
-
-    return integerPart
-  })
+export const GasSchema = z.string().transform((gas): string => {
+  return parseGas(gas)
+})
 
 export type Gas = z.input<typeof GasSchema>
 
