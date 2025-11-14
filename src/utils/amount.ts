@@ -14,8 +14,21 @@ import { YOCTO_PER_NEAR } from "../core/constants.js"
 
 /**
  * Amount input type - must be a string with unit specification
+ *
+ * Accepts:
+ * - Literal strings: "10 NEAR", "10.5 NEAR", "1000 yocto"
+ * - Constructor output: Amount.NEAR(10), Amount.yocto(1000n)
+ *
+ * For variables, use 'as const' to preserve literal type:
+ * @example
+ * const amount = "10 NEAR" as const
  */
-export type AmountInput = string
+export type AmountInput =
+  | `${number} NEAR`
+  | `${number}.${number} NEAR`
+  | `${number} yocto`
+  | ReturnType<typeof Amount.NEAR>
+  | ReturnType<typeof Amount.yocto>
 
 /**
  * Amount namespace - explicit constructors for NEAR values
@@ -82,7 +95,10 @@ export function parseAmount(amount: AmountInput): string {
       `Ambiguous amount: "${amount}". Did you mean "${amount} NEAR"?\n` +
         `  - Use Amount.NEAR(${amount}) for NEAR\n` +
         `  - Use Amount.yocto(${amount}) for yoctoNEAR\n` +
-        `  - Or write "${amount} NEAR" or "${amount} yocto"`,
+        `  - Or write "${amount} NEAR" or "${amount} yocto"\n` +
+        `\n` +
+        `💡 TypeScript tip: Use 'as const' for variables:\n` +
+        `   const amount = "10 NEAR" as const`,
     )
   }
 

@@ -12,8 +12,21 @@ import { GAS_PER_TGAS } from "../core/constants.js"
 
 /**
  * Gas input type - string with unit specification
+ *
+ * Accepts:
+ * - Literal strings: "30 Tgas", "30.5 Tgas"
+ * - Raw gas strings: "30000000000000"
+ * - Constructor output: Gas.Tgas(30)
+ *
+ * For variables, use 'as const' to preserve literal type:
+ * @example
+ * const gas = "30 Tgas" as const
  */
-export type GasInput = string
+export type GasInput =
+  | `${number} Tgas`
+  | `${number}.${number} Tgas`
+  | `${number}`
+  | ReturnType<typeof Gas.Tgas>
 
 /**
  * Gas namespace - explicit constructors
