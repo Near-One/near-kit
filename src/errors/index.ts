@@ -60,7 +60,9 @@ export class FunctionCallError extends NearError {
     super(message, "FUNCTION_CALL_ERROR")
     this.name = "FunctionCallError"
     this.contractId = contractId
-    this.methodName = methodName
+    if (methodName !== undefined) {
+      this.methodName = methodName
+    }
     this.logs = logs
     if (panic !== undefined) {
       this.panic = panic
