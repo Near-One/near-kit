@@ -61,15 +61,38 @@ export interface RpcResponse<T = unknown> {
   }
 }
 
+export interface RpcRetryConfig {
+  maxRetries: number
+  initialDelayMs: number
+}
+
+const DEFAULT_RETRY_CONFIG: RpcRetryConfig = {
+  maxRetries: 4,
+  initialDelayMs: 1000, // 1 second
+}
+
 export class RpcClient {
   private readonly url: string
   private readonly headers: Record<string, string>
   private requestId: number
+  private readonly retryConfig: RpcRetryConfig
 
-  constructor(url: string, headers?: Record<string, string>) {
+  constructor(
+    url: string,
+    headers?: Record<string, string>,
+    retryConfig?: Partial<RpcRetryConfig>,
+  ) {
     this.url = url
     this.headers = headers || {}
     this.requestId = 0
+    this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...retryConfig }
+  }
+
+  /**
+   * Sleep for the specified number of milliseconds
+   */
+  private async sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
   async call<T = unknown>(method: string, params: unknown): Promise<T> {
@@ -80,50 +103,78 @@ export class RpcClient {
       params,
     }
 
-    try {
-      const response = await fetch(this.url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...this.headers,
-        },
-        body: JSON.stringify(request),
-      })
+    let lastError: NearError | null = null
 
-      if (!response.ok) {
-        // Use isRetryableStatus to determine if this HTTP error is retryable
-        throw new NetworkError(
-          `HTTP ${response.status}: ${response.statusText}`,
-          response.status,
-          isRetryableStatus(response.status),
-        )
+    // Retry loop with exponential backoff
+    // Total attempts = 1 (initial) + maxRetries
+    const totalAttempts = 1 + this.retryConfig.maxRetries
+    for (let attempt = 0; attempt < totalAttempts; attempt++) {
+      try{
+        const response = await fetch(this.url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...this.headers,
+          },
+          body: JSON.stringify(request),
+        })
+
+        if (!response.ok) {
+          // Use isRetryableStatus to determine if this HTTP error is retryable
+          throw new NetworkError(
+            `HTTP ${response.status}: ${response.statusText}`,
+            response.status,
+            isRetryableStatus(response.status),
+          )
+        }
+
+        const data: RpcResponse<T> = await response.json()
+
+        if (data.error) {
+          // Pass status code to parseRpcError for better retryable detection
+          parseRpcError(data.error, response.status)
+        }
+
+        if (data.result === undefined) {
+          throw new NetworkError("RPC response missing result field")
+        }
+
+        return data.result
+      } catch (error) {
+        // Re-throw non-NearError instances as NetworkError
+        let nearError: NearError
+        if (!(error instanceof NearError)) {
+          // Network failure (fetch threw an error)
+          nearError = new NetworkError(
+            `Network request failed: ${(error as Error).message}`,
+            undefined,
+            true, // Network failures are always retryable
+          )
+        } else {
+          nearError = error
+        }
+
+        lastError = nearError
+
+        // Check if we should retry
+        const isRetryable = "retryable" in lastError && lastError.retryable
+        const hasRetriesLeft = attempt + 1 < totalAttempts
+
+        if (!isRetryable || !hasRetriesLeft) {
+          // Not retryable or out of retries - throw the error
+          throw lastError
+        }
+
+        // Calculate exponential backoff delay: initialDelay * 2^attempt
+        const delayMs = this.retryConfig.initialDelayMs * 2 ** attempt
+
+        // Wait before retrying
+        await this.sleep(delayMs)
       }
-
-      const data: RpcResponse<T> = await response.json()
-
-      if (data.error) {
-        // Pass status code to parseRpcError for better retryable detection
-        parseRpcError(data.error, response.status)
-      }
-
-      if (data.result === undefined) {
-        throw new NetworkError("RPC response missing result field")
-      }
-
-      return data.result
-    } catch (error) {
-      // Re-throw all NearError instances (includes all our custom error types)
-      if (error instanceof NearError) {
-        throw error
-      }
-
-      // Network failure (fetch threw an error)
-      throw new NetworkError(
-        `Network request failed: ${(error as Error).message}`,
-        undefined,
-        true, // Network failures are always retryable
-      )
     }
+
+    // This should never be reached, but TypeScript needs it
+    throw lastError || new NetworkError("Unknown error during RPC call")
   }
 
   async query<T = unknown>(

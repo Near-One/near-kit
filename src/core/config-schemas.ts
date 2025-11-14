@@ -78,6 +78,14 @@ export const TxExecutionStatusSchema = z.enum([
 ])
 
 /**
+ * Schema for RPC retry configuration
+ */
+export const RpcRetryConfigSchema = z.object({
+  maxRetries: z.number().int().min(0).optional(),
+  initialDelayMs: z.number().int().min(0).optional(),
+})
+
+/**
  * Schema for NEAR client configuration
  */
 export const NearConfigSchema = z.object({
@@ -89,6 +97,7 @@ export const NearConfigSchema = z.object({
   privateKey: z.union([PrivateKeySchema, z.instanceof(Uint8Array)]).optional(),
   wallet: z.any().optional(), // WalletConnection interface
   defaultWaitUntil: TxExecutionStatusSchema.optional(),
+  retryConfig: RpcRetryConfigSchema.optional(),
 })
 
 // Type override to use template literal type for better type safety
@@ -111,7 +120,7 @@ export function resolveNetworkConfig(network?: NetworkConfig): {
   // Default to mainnet
   if (!network) {
     const envNetwork =
-      typeof process !== "undefined" ? process.env["NEAR_NETWORK"] : undefined
+      typeof process !== "undefined" ? process.env.NEAR_NETWORK : undefined
     if (
       envNetwork &&
       (envNetwork === "mainnet" ||
