@@ -77,6 +77,32 @@ export const PublicKeySchema = z
 
 export type PublicKeyString = z.infer<typeof PublicKeySchema>
 
+// ==================== Private Key Schema ====================
+
+/**
+ * Schema for validating NEAR private keys
+ *
+ * Supports:
+ * - Ed25519: "ed25519:..." (base58 encoded, 64 bytes)
+ * - Secp256k1: "secp256k1:..." (base58 encoded)
+ */
+export const PrivateKeySchema = z
+  .string()
+  .refine(
+    (key) =>
+      key.startsWith(ED25519_KEY_PREFIX) ||
+      key.startsWith(SECP256K1_KEY_PREFIX),
+    "Private key must start with 'ed25519:' or 'secp256k1:'",
+  )
+  .refine((key) => {
+    const keyData = key.startsWith(ED25519_KEY_PREFIX)
+      ? key.slice(ED25519_KEY_PREFIX.length)
+      : key.slice(SECP256K1_KEY_PREFIX.length)
+    return keyData.length > 0 && isValidBase58(keyData)
+  }, "Private key must be valid base58 encoding")
+
+export type PrivateKeyString = z.infer<typeof PrivateKeySchema>
+
 // ==================== Amount Schema ====================
 
 /**
@@ -143,6 +169,20 @@ export function validatePublicKey(key: string): string {
  */
 export function isValidPublicKey(key: string): boolean {
   return PublicKeySchema.safeParse(key).success
+}
+
+/**
+ * Validate private key (throws on invalid)
+ */
+export function validatePrivateKey(key: string): string {
+  return PrivateKeySchema.parse(key)
+}
+
+/**
+ * Check if private key is valid (boolean)
+ */
+export function isPrivateKey(key: string): boolean {
+  return PrivateKeySchema.safeParse(key).success
 }
 
 /**

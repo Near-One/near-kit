@@ -33,10 +33,10 @@
 import { base58 } from "@scure/base"
 import { InvalidKeyError, NearError, SignatureError } from "../errors/index.js"
 import { parseKey, parsePublicKey } from "../utils/key.js"
-import { ED25519_KEY_PREFIX, SECP256K1_KEY_PREFIX } from "./constants.js"
 import {
   type Amount,
   type Gas,
+  isPrivateKey,
   normalizeAmount,
   normalizeGas,
 } from "../utils/validation.js"
@@ -363,11 +363,7 @@ export class TransactionBuilder {
   signWith(key: string | Signer): this {
     if (typeof key === "string") {
       // Check if it looks like an account ID (common mistake)
-      const isPrivateKey =
-        key.startsWith(ED25519_KEY_PREFIX) ||
-        key.startsWith(SECP256K1_KEY_PREFIX)
-
-      if (key.includes(".") && !isPrivateKey) {
+      if (key.includes(".") && !isPrivateKey(key)) {
         throw new SignatureError(
           `signWith() requires a private key (e.g., 'ed25519:...' or 'secp256k1:...'), not an account ID ('${key}'). ` +
             `To sign as a different account, use .transaction('${key}') instead.`,

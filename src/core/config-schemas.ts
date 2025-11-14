@@ -3,6 +3,7 @@
  */
 
 import { z } from "zod"
+import { PrivateKeySchema } from "../utils/validation.js"
 import { NETWORK_PRESETS } from "./constants.js"
 
 // ==================== Network Config Schema ====================
@@ -85,7 +86,9 @@ export const NearConfigSchema = z.object({
   headers: z.record(z.string(), z.string()).optional(),
   keyStore: KeyStoreConfigSchema.optional(),
   signer: SignerSchema.optional(),
-  privateKey: z.union([z.string(), z.instanceof(Uint8Array)]).optional(),
+  privateKey: z
+    .union([PrivateKeySchema, z.instanceof(Uint8Array)])
+    .optional(),
   wallet: z.any().optional(), // WalletConnection interface
   defaultWaitUntil: TxExecutionStatusSchema.optional(),
 })
