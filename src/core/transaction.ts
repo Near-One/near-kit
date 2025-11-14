@@ -5,7 +5,7 @@
 import { base58 } from "@scure/base"
 import { parseGas, parseNearAmount } from "../utils/format.js"
 import { DEFAULT_FUNCTION_CALL_GAS } from "./constants.js"
-import type { RpcClient } from "./rpc.js"
+import type { RpcClient } from "./rpc/rpc.js"
 import {
   serializeTransaction,
   serializeSignedTransaction,

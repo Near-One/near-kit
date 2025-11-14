@@ -8,7 +8,7 @@ import { AccountDoesNotExistError, NetworkError } from "../errors/index.js"
 import { InMemoryKeyStore } from "../keys/index.js"
 import { parseKey } from "../utils/key.js"
 import { NETWORK_PRESETS } from "./constants.js"
-import { RpcClient } from "./rpc.js"
+import { RpcClient } from "./rpc/rpc.js"
 import { TransactionBuilder } from "./transaction.js"
 import type {
   CallOptions,

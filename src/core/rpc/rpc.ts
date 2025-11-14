@@ -3,14 +3,14 @@
  */
 
 import { base64 } from "@scure/base"
-import { NetworkError } from "../errors/index.js"
+import { NetworkError } from "../../errors/index.js"
 import type {
   ViewFunctionCallResult,
   AccountView,
   AccessKeyView,
   StatusResponse,
   GasPriceResponse,
-} from "./types.js"
+} from "../types.js"
 import {
   ViewFunctionCallResultSchema,
   AccountViewSchema,

@@ -12,7 +12,7 @@ import {
   signatureToZorsh,
   serializeTransaction,
   type Action,
-} from "./schema.js"
+} from "../schema.js"
 import {
   transfer,
   functionCall,
@@ -22,14 +22,14 @@ import {
   stake,
   addKey,
   deleteKey,
-} from "./actions.js"
+} from "../actions.js"
 import {
   KeyType,
   type Ed25519PublicKey,
   type Secp256k1PublicKey,
   type Ed25519Signature,
   type Secp256k1Signature,
-} from "./types.js"
+} from "../types.js"
 
 describe("Action type inference", () => {
   test("Action type is inferred from schema", () => {

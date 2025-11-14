@@ -81,7 +81,7 @@ export type Signer = (message: Uint8Array) => Promise<Signature>
 export type {
   FunctionCallPermissionDetails,
   AccessKeyPermission,
-} from "./rpc-schemas.js"
+} from "./rpc/rpc-schemas.js"
 
 // ==================== Transaction Types ====================
 
@@ -167,7 +167,7 @@ export type {
   GasPriceResponse,
   AccessKeyListResponse,
   RpcErrorResponse,
-} from "./rpc-schemas.js"
+} from "./rpc/rpc-schemas.js"
 
 // ==================== Client Configuration ====================
 
