@@ -3,6 +3,7 @@
  * Provides clean, type-safe interfaces for creating NEAR transaction actions
  */
 
+import { base58 } from "@scure/base"
 import type {
   AccessKeyPermissionBorsh,
   AddKeyAction,
@@ -101,54 +102,7 @@ export class DeleteKey {
 }
 
 // ==================== Global Contract Actions ====================
-
-export class GlobalContractDeployMode {
-  CodeHash?: Record<string, never>
-  AccountId?: Record<string, never>
-
-  constructor(
-    mode:
-      | { CodeHash: Record<string, never> }
-      | { AccountId: Record<string, never> },
-  ) {
-    if ("CodeHash" in mode) {
-      this.CodeHash = mode.CodeHash
-    } else if ("AccountId" in mode) {
-      this.AccountId = mode.AccountId
-    }
-  }
-}
-
-export class GlobalContractIdentifier {
-  CodeHash?: Uint8Array
-  AccountId?: string
-
-  constructor(id: { CodeHash: Uint8Array } | { AccountId: string }) {
-    if ("CodeHash" in id) {
-      this.CodeHash = id.CodeHash
-    } else if ("AccountId" in id) {
-      this.AccountId = id.AccountId
-    }
-  }
-}
-
-export class DeployGlobalContract {
-  code: Uint8Array
-  deployMode: GlobalContractDeployMode
-
-  constructor(code: Uint8Array, deployMode: GlobalContractDeployMode) {
-    this.code = code
-    this.deployMode = deployMode
-  }
-}
-
-export class UseGlobalContract {
-  contractIdentifier: GlobalContractIdentifier
-
-  constructor(contractIdentifier: GlobalContractIdentifier) {
-    this.contractIdentifier = contractIdentifier
-  }
-}
+// Classes removed - no longer needed with ergonomic API
 
 // ==================== Delegate Actions ====================
 
@@ -319,39 +273,83 @@ export function deleteKey(publicKey: PublicKey): DeleteKeyAction {
 }
 
 /**
- * Create a deploy global contract action
+ * Publish a global contract that can be reused by multiple accounts
+ *
+ * @param code - The compiled contract code bytes
+ * @param accountId - Optional account ID. If provided, creates a mutable contract (can be updated).
+ *                    If omitted, creates an immutable contract (identified by code hash).
+ * @returns DeployGlobalContractAction
+ *
+ * @example
+ * ```typescript
+ * // Publish immutable contract (identified by code hash)
+ * publishContract(contractCode)
+ *
+ * // Publish mutable contract (identified by account, can be updated)
+ * publishContract(contractCode, "my-publisher.near")
+ * ```
  */
-export function deployGlobalContract(
+export function publishContract(
   code: Uint8Array,
-  deployMode: GlobalContractDeployMode,
+  accountId?: string,
 ): DeployGlobalContractAction {
-  // Convert class instance to discriminated union
-  const deployModeConverted =
-    deployMode.CodeHash !== undefined ? { CodeHash: {} } : { AccountId: {} }
+  const deployMode = accountId ? { AccountId: {} } : { CodeHash: {} }
 
   return {
     deployGlobalContract: {
       code,
-      deployMode: deployModeConverted,
+      deployMode,
     },
   }
 }
 
 /**
- * Create a use global contract action
+ * Deploy a contract to this account from previously published code in the global registry
+ *
+ * @param reference - Reference to the published contract, either:
+ *                    - { codeHash: Uint8Array | string } - Reference by code hash (Uint8Array or base58 string)
+ *                    - { accountId: string } - Reference by the account that published it
+ * @returns UseGlobalContractAction
+ *
+ * @example
+ * ```typescript
+ * // Deploy from code hash (Uint8Array)
+ * deployFromPublished({ codeHash: hashBytes })
+ *
+ * // Deploy from code hash (base58 string)
+ * deployFromPublished({ codeHash: "5FzD8..." })
+ *
+ * // Deploy from account ID
+ * deployFromPublished({ accountId: "contract-publisher.near" })
+ * ```
  */
-export function useGlobalContract(
-  contractIdentifier: GlobalContractIdentifier,
+export function deployFromPublished(
+  reference: { codeHash: string | Uint8Array } | { accountId: string },
 ): UseGlobalContractAction {
-  // Convert class instance to discriminated union
-  const identifierConverted =
-    contractIdentifier.CodeHash !== undefined
-      ? { CodeHash: Array.from(contractIdentifier.CodeHash) as number[] }
-      : { AccountId: contractIdentifier.AccountId as string }
+  let contractIdentifier: { CodeHash: number[] } | { AccountId: string }
+
+  if ("accountId" in reference) {
+    contractIdentifier = { AccountId: reference.accountId }
+  } else {
+    // Handle codeHash - could be string (base58) or Uint8Array
+    const hashBytes =
+      typeof reference.codeHash === "string"
+        ? base58.decode(reference.codeHash)
+        : reference.codeHash
+
+    // Validate hash is 32 bytes
+    if (hashBytes.length !== 32) {
+      throw new Error(
+        `Code hash must be 32 bytes, got ${hashBytes.length} bytes`,
+      )
+    }
+
+    contractIdentifier = { CodeHash: Array.from(hashBytes) as number[] }
+  }
 
   return {
     useGlobalContract: {
-      contractIdentifier: identifierConverted,
+      contractIdentifier,
     },
   }
 }

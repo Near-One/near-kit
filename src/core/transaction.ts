@@ -176,6 +176,73 @@ export class TransactionBuilder {
   }
 
   /**
+   * Publish a global contract that can be reused by multiple accounts
+   *
+   * @param code - The compiled contract code bytes
+   * @param publisherId - Optional account ID. If provided, creates a mutable contract (can be updated).
+   *                      If omitted, creates an immutable contract (identified by code hash).
+   *
+   * @example
+   * ```typescript
+   * // Publish immutable contract (identified by code hash)
+   * await near.transaction(accountId)
+   *   .publishContract(contractCode)
+   *   .send()
+   *
+   * // Publish mutable contract (identified by account, can be updated)
+   * await near.transaction(accountId)
+   *   .publishContract(contractCode, "my-publisher.near")
+   *   .send()
+   * ```
+   */
+  publishContract(code: Uint8Array, publisherId?: string): this {
+    this.actions.push(actions.publishContract(code, publisherId))
+
+    if (!this.receiverId) {
+      this.receiverId = this.signerId
+    }
+
+    return this
+  }
+
+  /**
+   * Deploy a contract to this account from previously published code in the global registry
+   *
+   * @param reference - Reference to the published contract, either:
+   *                    - { codeHash: Uint8Array | string } - Reference by code hash (Uint8Array or base58 string)
+   *                    - { accountId: string } - Reference by the account that published it
+   *
+   * @example
+   * ```typescript
+   * // Deploy from code hash (Uint8Array)
+   * await near.transaction(accountId)
+   *   .deployFromPublished({ codeHash: hashBytes })
+   *   .send()
+   *
+   * // Deploy from code hash (base58 string)
+   * await near.transaction(accountId)
+   *   .deployFromPublished({ codeHash: "5FzD8..." })
+   *   .send()
+   *
+   * // Deploy from account ID
+   * await near.transaction(accountId)
+   *   .deployFromPublished({ accountId: "contract-publisher.near" })
+   *   .send()
+   * ```
+   */
+  deployFromPublished(
+    reference: { codeHash: string | Uint8Array } | { accountId: string },
+  ): this {
+    this.actions.push(actions.deployFromPublished(reference))
+
+    if (!this.receiverId) {
+      this.receiverId = this.signerId
+    }
+
+    return this
+  }
+
+  /**
    * Add a stake action
    */
   stake(publicKey: string, amount: Amount): this {
