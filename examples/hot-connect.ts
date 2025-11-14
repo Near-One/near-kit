@@ -11,7 +11,7 @@
  * npm install @hot-labs/near-connect
  */
 
-import { Near, fromHotConnect } from "../src/index.js"
+import { fromHotConnect, Near } from "../src/index.js"
 
 // Uncomment to use in a real project:
 // import { NearConnector } from "@hot-labs/near-connect"
@@ -51,7 +51,7 @@ async function main() {
       "contract.near",
       "get_balance",
       { account_id: event.accounts[0].accountId },
-      { gas: "30 Tgas" },
+      { gas: "30 Tgas" }
     )
     console.log("Balance:", result)
 
@@ -66,7 +66,7 @@ async function main() {
         "contract.near",
         "method",
         { arg: "value" },
-        { gas: "50 Tgas", attachedDeposit: "0.1 NEAR" },
+        { gas: "50 Tgas", attachedDeposit: "0.1 NEAR" }
       )
       .send()
   })

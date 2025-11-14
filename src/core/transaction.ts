@@ -449,6 +449,10 @@ export class TransactionBuilder {
    *   .send({ waitUntil: "FINAL" })
    * ```
    */
+  async send(): Promise<FinalExecutionOutcomeMap["EXECUTED_OPTIMISTIC"]>
+  async send<W extends keyof FinalExecutionOutcomeMap>(
+    options: SendOptions<W>
+  ): Promise<FinalExecutionOutcomeMap[W]>
   async send<W extends keyof FinalExecutionOutcomeMap = "EXECUTED_OPTIMISTIC">(
     options?: SendOptions<W>
   ): Promise<FinalExecutionOutcomeMap[W]> {
