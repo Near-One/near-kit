@@ -44,8 +44,14 @@ export class FunctionCallError extends NearError {
   panic?: string
   methodName: string
   contractId: string
+  logs: string[]
 
-  constructor(contractId: string, methodName: string, panic?: string) {
+  constructor(
+    contractId: string,
+    methodName: string,
+    panic?: string,
+    logs: string[] = [],
+  ) {
     const message = panic
       ? `Contract call failed: ${contractId}.${methodName} - ${panic}`
       : `Contract call failed: ${contractId}.${methodName}`
@@ -54,6 +60,7 @@ export class FunctionCallError extends NearError {
     this.name = "FunctionCallError"
     this.contractId = contractId
     this.methodName = methodName
+    this.logs = logs
     if (panic !== undefined) {
       this.panic = panic
     }

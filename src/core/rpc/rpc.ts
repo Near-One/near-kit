@@ -411,6 +411,7 @@ export class RpcClient {
 
       if (failedReceipt) {
         const contractId = failedReceipt.outcome.executor_id
+        const logs = failedReceipt.outcome.logs
         // Try to extract method name from transaction actions
         const functionCallAction = parsed.transaction.actions.find(
           action => typeof action === "object" && "FunctionCall" in action
@@ -419,7 +420,7 @@ export class RpcClient {
           ? functionCallAction.FunctionCall.method_name
           : undefined
 
-        throw new FunctionCallError(contractId, methodName, errorMessage)
+        throw new FunctionCallError(contractId, methodName, errorMessage, logs)
       }
 
       // Generic transaction failure
