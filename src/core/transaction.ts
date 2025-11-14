@@ -50,7 +50,7 @@ import {
 } from "./schema.js"
 import type {
   Action,
-  FinalExecutionOutcome,
+  FinalExecutionOutcomeMap,
   KeyPair,
   KeyStore,
   SendOptions,
@@ -449,7 +449,9 @@ export class TransactionBuilder {
    *   .send({ waitUntil: "FINAL" })
    * ```
    */
-  async send(options?: SendOptions): Promise<FinalExecutionOutcome> {
+  async send<W extends keyof FinalExecutionOutcomeMap = "EXECUTED_OPTIMISTIC">(
+    options?: SendOptions<W>
+  ): Promise<FinalExecutionOutcomeMap[W]> {
     if (!this.receiverId) {
       throw new NearError(
         "No receiver ID set for transaction",
@@ -459,11 +461,14 @@ export class TransactionBuilder {
 
     // Use wallet if available
     if (this.wallet) {
-      return await this.wallet.signAndSendTransaction({
+      const result = await this.wallet.signAndSendTransaction({
         signerId: this.signerId,
         receiverId: this.receiverId,
         actions: this.actions,
       })
+      // Wallet doesn't support waitUntil parameter, always returns executed result
+      // Cast to the expected type (this is safe because wallet always waits for execution)
+      return result as FinalExecutionOutcomeMap[W]
     }
 
     // Build transaction using private key/signer approach
@@ -501,7 +506,7 @@ export class TransactionBuilder {
     const signedSerialized = serializeSignedTransaction(signedTx)
 
     // Determine waitUntil - use option if provided, otherwise use default
-    const waitUntil = options?.waitUntil ?? this.defaultWaitUntil
+    const waitUntil = (options?.waitUntil ?? this.defaultWaitUntil) as W
 
     // Send to network
     return await this.rpc.sendTransaction(signedSerialized, waitUntil)

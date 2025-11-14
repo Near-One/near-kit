@@ -322,15 +322,53 @@ export const TransactionSchema = z.object({
 
 /**
  * Final execution outcome schema - the response from send_tx
- * Note: When wait_until is NONE, transaction/transaction_outcome/receipts_outcome are undefined
+ *
+ * Uses discriminated union based on final_execution_status for type safety:
+ * - NONE: Transaction submitted but not executed yet (minimal response)
+ * - INCLUDED: Transaction included in block
+ * - EXECUTED_OPTIMISTIC/EXECUTED/FINAL: Transaction executed (full response)
  */
-export const FinalExecutionOutcomeSchema = z.object({
-  final_execution_status: TxExecutionStatusSchema,
-  status: ExecutionStatusSchema,
-  transaction: TransactionSchema.optional(),
-  transaction_outcome: ExecutionOutcomeWithIdSchema.optional(),
-  receipts_outcome: z.array(ExecutionOutcomeWithIdSchema).optional(),
-})
+export const FinalExecutionOutcomeSchema = z.discriminatedUnion(
+  "final_execution_status",
+  [
+    // NONE: Transaction submitted, no execution yet
+    z.object({
+      final_execution_status: z.literal("NONE"),
+    }),
+    // INCLUDED: Transaction in block (minimal response like NONE in sandbox)
+    z.object({
+      final_execution_status: z.literal("INCLUDED"),
+    }),
+    // INCLUDED_FINAL: Alternative name for INCLUDED with finality (minimal response)
+    z.object({
+      final_execution_status: z.literal("INCLUDED_FINAL"),
+    }),
+    // EXECUTED_OPTIMISTIC: Executed but not finalized
+    z.object({
+      final_execution_status: z.literal("EXECUTED_OPTIMISTIC"),
+      status: ExecutionStatusSchema,
+      transaction: TransactionSchema,
+      transaction_outcome: ExecutionOutcomeWithIdSchema,
+      receipts_outcome: z.array(ExecutionOutcomeWithIdSchema),
+    }),
+    // EXECUTED: Executed (legacy)
+    z.object({
+      final_execution_status: z.literal("EXECUTED"),
+      status: ExecutionStatusSchema,
+      transaction: TransactionSchema,
+      transaction_outcome: ExecutionOutcomeWithIdSchema,
+      receipts_outcome: z.array(ExecutionOutcomeWithIdSchema),
+    }),
+    // FINAL: Fully finalized
+    z.object({
+      final_execution_status: z.literal("FINAL"),
+      status: ExecutionStatusSchema,
+      transaction: TransactionSchema,
+      transaction_outcome: ExecutionOutcomeWithIdSchema,
+      receipts_outcome: z.array(ExecutionOutcomeWithIdSchema),
+    }),
+  ]
+)
 
 /**
  * Receipt schema (for EXPERIMENTAL_tx_status)
@@ -363,10 +401,14 @@ export const ReceiptSchema = z.object({
 
 /**
  * Final execution outcome with receipts (EXPERIMENTAL_tx_status response)
+ * Uses intersection since we can't extend discriminated unions
  */
-export const FinalExecutionOutcomeWithReceiptsSchema = FinalExecutionOutcomeSchema.extend({
-  receipts: z.array(ReceiptSchema),
-})
+export const FinalExecutionOutcomeWithReceiptsSchema = z.intersection(
+  FinalExecutionOutcomeSchema,
+  z.object({
+    receipts: z.array(ReceiptSchema),
+  })
+)
 
 // ==================== Type Inference ====================
 
@@ -404,3 +446,25 @@ export type Receipt = z.infer<typeof ReceiptSchema>
 export type FinalExecutionOutcomeWithReceipts = z.infer<
   typeof FinalExecutionOutcomeWithReceiptsSchema
 >
+
+/**
+ * Mapped type for looking up the specific FinalExecutionOutcome variant based on wait mode.
+ * This enables precise type inference when using waitUntil parameter.
+ *
+ * @example
+ * ```typescript
+ * type NoneResult = FinalExecutionOutcomeMap["NONE"]
+ * // { final_execution_status: "NONE" }
+ *
+ * type FinalResult = FinalExecutionOutcomeMap["FINAL"]
+ * // { final_execution_status: "FINAL"; status: ...; transaction: ...; ... }
+ * ```
+ */
+export type FinalExecutionOutcomeMap = {
+  NONE: Extract<FinalExecutionOutcome, { final_execution_status: "NONE" }>
+  INCLUDED: Extract<FinalExecutionOutcome, { final_execution_status: "INCLUDED" }>
+  INCLUDED_FINAL: Extract<FinalExecutionOutcome, { final_execution_status: "INCLUDED_FINAL" }>
+  EXECUTED_OPTIMISTIC: Extract<FinalExecutionOutcome, { final_execution_status: "EXECUTED_OPTIMISTIC" }>
+  EXECUTED: Extract<FinalExecutionOutcome, { final_execution_status: "EXECUTED" }>
+  FINAL: Extract<FinalExecutionOutcome, { final_execution_status: "FINAL" }>
+}

@@ -108,11 +108,12 @@ describe("RPC Response Exploration", () => {
 
       console.log("\n=== WAIT MODE: NONE ===")
       console.log("final_execution_status:", result.final_execution_status)
-      console.log("\nstatus:", JSON.stringify(result.status, null, 2))
       console.log("\nFull result keys:", Object.keys(result))
+      console.log("\nNote: NONE mode returns minimal response - only final_execution_status field")
 
       expect(result.final_execution_status).toBe("NONE")
-      expect(result.status === "Unknown" || result.status === "Pending").toBe(true)
+      // NONE mode doesn't include status, transaction, or execution outcomes
+      expect("status" in result).toBe(false)
     })
   })
 

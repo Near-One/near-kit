@@ -30,9 +30,9 @@ import type {
   AccessKeyView,
   AccountView,
   FinalExecutionOutcome,
+  FinalExecutionOutcomeMap,
   GasPriceResponse,
   StatusResponse,
-  TxExecutionStatus,
   ViewFunctionCallResult,
 } from "../types.js"
 import {
@@ -386,27 +386,35 @@ export class RpcClient {
     return AccessKeyViewSchema.parse(result)
   }
 
-  async sendTransaction(
+  async sendTransaction<W extends keyof FinalExecutionOutcomeMap = "EXECUTED_OPTIMISTIC">(
     signedTransaction: Uint8Array,
-    waitUntil: TxExecutionStatus = "EXECUTED_OPTIMISTIC",
-  ): Promise<FinalExecutionOutcome> {
+    waitUntil?: W,
+  ): Promise<FinalExecutionOutcomeMap[W]> {
+    const actualWaitUntil = (waitUntil ?? "EXECUTED_OPTIMISTIC") as W
     const base64Encoded = base64.encode(signedTransaction)
     // Use send_tx with wait_until parameter instead of deprecated broadcast_tx_commit
     const result = await this.call("send_tx", {
       signed_tx_base64: base64Encoded,
-      wait_until: waitUntil,
+      wait_until: actualWaitUntil,
     })
 
-    const parsed = FinalExecutionOutcomeSchema.parse(result)
+    const parsed: FinalExecutionOutcome = FinalExecutionOutcomeSchema.parse(result)
 
     // Check if transaction execution failed and throw appropriate error
-    // Status can be "Unknown", "Pending", or an object with SuccessValue/SuccessReceiptId/Failure
-    if (typeof parsed.status === "object" && "Failure" in parsed.status) {
-      const failure = parsed.status.Failure
-      const errorMessage = failure.error_message || failure.error_type || "Transaction execution failed"
+    // Type narrow to executed variants that have status/transaction/outcome fields
+    // NONE and INCLUDED modes don't have these fields, so skip error checking for them
+    if (
+      parsed.final_execution_status !== "NONE" &&
+      parsed.final_execution_status !== "INCLUDED" &&
+      parsed.final_execution_status !== "INCLUDED_FINAL"
+    ) {
+      // TypeScript now knows parsed has status, transaction, transaction_outcome, receipts_outcome
+      if (parsed.status && typeof parsed.status === "object" && "Failure" in parsed.status) {
+        const failure = parsed.status.Failure
+        const errorMessage = failure.error_message || failure.error_type || "Transaction execution failed"
 
-      // Helper function to check if a failure is a FunctionCallError
-      const isFunctionCallError = (failureObj: any): boolean => {
+        // Helper function to check if a failure is a FunctionCallError
+        const isFunctionCallError = (failureObj: any): boolean => {
         return (
           failureObj.ActionError?.kind?.FunctionCallError !== undefined ||
           failureObj.FunctionCallError !== undefined
@@ -487,11 +495,14 @@ export class RpcClient {
         }
       }
 
-      // Generic transaction failure (ActionError from other actions, or other failure types)
-      throw new InvalidTransactionError(errorMessage, failure)
+        // Generic transaction failure (ActionError from other actions, or other failure types)
+        throw new InvalidTransactionError(errorMessage, failure)
+      }
     }
 
-    return parsed
+    // Safe cast: TypeScript guarantees W is a valid key, Zod validates the structure,
+    // and waitUntil determines which variant we get from the RPC
+    return parsed as FinalExecutionOutcomeMap[W]
   }
 
   async getStatus(): Promise<StatusResponse> {

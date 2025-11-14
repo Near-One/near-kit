@@ -155,9 +155,20 @@ describe("Contract Failure Modes", () => {
       }
     })
 
-    test.skip("should not throw error with NONE wait mode (transaction not executed yet)", async () => {
-      // Skipping: NONE mode returns incomplete data that doesn't match schema
-      // TODO: Fix schema to handle NONE mode response or document that NONE is not fully supported
+    test("should not throw error with NONE wait mode (transaction not executed yet)", async () => {
+      // With NONE mode, transaction is submitted but not executed
+      // No error should be thrown because execution hasn't happened yet
+      const result = await near
+        .transaction(sandbox.rootAccount.id)
+        .functionCall(contractId, "add_message", {}) // This would fail if executed
+        .send({ waitUntil: "NONE" })
+
+      // NONE mode returns minimal response
+      expect(result.final_execution_status).toBe("NONE")
+      expect("status" in result).toBe(false)
+      expect("transaction_outcome" in result).toBe(false)
+
+      console.log("✓ NONE mode does not throw error (transaction not executed yet)")
     })
   })
 

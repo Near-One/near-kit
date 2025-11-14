@@ -151,7 +151,10 @@ export type TxExecutionStatus =
 /**
  * Options for sending a transaction
  */
-export interface SendOptions {
+// Import for use in SendOptions
+import type { FinalExecutionOutcomeMap } from "./rpc/rpc-schemas.js"
+
+export interface SendOptions<W extends keyof FinalExecutionOutcomeMap = keyof FinalExecutionOutcomeMap> {
   /**
    * Controls when the RPC returns after submitting the transaction.
    *
@@ -168,7 +171,7 @@ export interface SendOptions {
    *
    * @default "EXECUTED_OPTIMISTIC"
    */
-  waitUntil?: TxExecutionStatus
+  waitUntil?: W
 }
 
 export interface Transaction {
@@ -207,6 +210,7 @@ export type {
   ExecutionStatus,
   FinalExecutionOutcome,
   FinalExecutionOutcomeWithReceipts,
+  FinalExecutionOutcomeMap,
   MerklePathItem,
   Receipt,
   RpcAction,
