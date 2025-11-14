@@ -29,6 +29,7 @@ import {
 import type {
   AccessKeyView,
   AccountView,
+  FinalExecutionOutcome,
   GasPriceResponse,
   StatusResponse,
   TxExecutionStatus,
@@ -37,6 +38,7 @@ import type {
 import {
   AccessKeyViewSchema,
   AccountViewSchema,
+  FinalExecutionOutcomeSchema,
   GasPriceResponseSchema,
   RpcErrorResponseSchema,
   StatusResponseSchema,
@@ -387,13 +389,108 @@ export class RpcClient {
   async sendTransaction(
     signedTransaction: Uint8Array,
     waitUntil: TxExecutionStatus = "EXECUTED_OPTIMISTIC",
-  ): Promise<unknown> {
+  ): Promise<FinalExecutionOutcome> {
     const base64Encoded = base64.encode(signedTransaction)
     // Use send_tx with wait_until parameter instead of deprecated broadcast_tx_commit
-    return this.call("send_tx", {
+    const result = await this.call("send_tx", {
       signed_tx_base64: base64Encoded,
       wait_until: waitUntil,
     })
+
+    const parsed = FinalExecutionOutcomeSchema.parse(result)
+
+    // Check if transaction execution failed and throw appropriate error
+    // Status can be "Unknown", "Pending", or an object with SuccessValue/SuccessReceiptId/Failure
+    if (typeof parsed.status === "object" && "Failure" in parsed.status) {
+      const failure = parsed.status.Failure
+      const errorMessage = failure.error_message || failure.error_type || "Transaction execution failed"
+
+      // Helper function to check if a failure is a FunctionCallError
+      const isFunctionCallError = (failureObj: any): boolean => {
+        return (
+          failureObj.ActionError?.kind?.FunctionCallError !== undefined ||
+          failureObj.FunctionCallError !== undefined
+        )
+      }
+
+      // Helper function to extract panic message from FunctionCallError
+      const extractPanicMessage = (failureObj: any): string | undefined => {
+        const functionCallError =
+          failureObj.ActionError?.kind?.FunctionCallError ||
+          failureObj.FunctionCallError
+
+        if (!functionCallError) return undefined
+
+        // Extract from ExecutionError or HostError
+        if (typeof functionCallError.ExecutionError === 'string') {
+          return functionCallError.ExecutionError
+        }
+        if (typeof functionCallError.HostError === 'string') {
+          return functionCallError.HostError
+        }
+
+        // Fallback to stringified error
+        return JSON.stringify(functionCallError)
+      }
+
+      // Check transaction_outcome first (direct contract failures without cross-contract calls)
+      if (
+        typeof parsed.transaction_outcome.outcome.status === "object" &&
+        "Failure" in parsed.transaction_outcome.outcome.status
+      ) {
+        const outcomeFailure = parsed.transaction_outcome.outcome.status.Failure
+
+        // Only throw FunctionCallError if the failure is actually from a function call
+        if (isFunctionCallError(outcomeFailure)) {
+          const contractId = parsed.transaction_outcome.outcome.executor_id
+          const logs = parsed.transaction_outcome.outcome.logs
+          // Try to extract method name from transaction actions
+          const functionCallAction = parsed.transaction.actions.find(
+            action => typeof action === "object" && "FunctionCall" in action
+          )
+          const methodName = functionCallAction && typeof functionCallAction === "object" && "FunctionCall" in functionCallAction
+            ? functionCallAction.FunctionCall.method_name
+            : undefined
+
+          // Extract actual panic message from nested FunctionCallError
+          const panicMessage = extractPanicMessage(outcomeFailure)
+
+          throw new FunctionCallError(contractId, methodName, panicMessage, logs)
+        }
+      }
+
+      // Check receipts_outcome for cross-contract call failures
+      const failedReceipt = parsed.receipts_outcome.find(
+        receipt => typeof receipt.outcome.status === "object" && "Failure" in receipt.outcome.status
+      )
+
+      if (failedReceipt && typeof failedReceipt.outcome.status === "object" && "Failure" in failedReceipt.outcome.status) {
+        const receiptFailure = failedReceipt.outcome.status.Failure
+
+        // Only throw FunctionCallError if the failure is actually from a function call
+        if (isFunctionCallError(receiptFailure)) {
+          const contractId = failedReceipt.outcome.executor_id
+          const logs = failedReceipt.outcome.logs
+          // Try to extract method name from transaction actions
+          const functionCallAction = parsed.transaction.actions.find(
+            action => typeof action === "object" && "FunctionCall" in action
+          )
+          const methodName = functionCallAction && typeof functionCallAction === "object" && "FunctionCall" in functionCallAction
+            ? functionCallAction.FunctionCall.method_name
+            : undefined
+
+          // Extract actual panic message from nested FunctionCallError
+          const panicMessage = extractPanicMessage(receiptFailure)
+
+          throw new FunctionCallError(contractId, methodName, panicMessage, logs)
+        }
+      }
+
+      // Generic transaction failure (ActionError from other actions, or other failure types)
+      throw new InvalidTransactionError(errorMessage, failure)
+    }
+
+    return parsed
   }
 
   async getStatus(): Promise<StatusResponse> {

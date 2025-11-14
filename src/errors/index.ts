@@ -42,18 +42,28 @@ export class InsufficientBalanceError extends NearError {
  */
 export class FunctionCallError extends NearError {
   panic?: string
-  methodName: string
+  methodName?: string
   contractId: string
+  logs: string[]
 
-  constructor(contractId: string, methodName: string, panic?: string) {
+  constructor(
+    contractId: string,
+    methodName: string | undefined,
+    panic?: string,
+    logs: string[] = [],
+  ) {
+    const methodPart = methodName ? `.${methodName}` : ""
     const message = panic
-      ? `Contract call failed: ${contractId}.${methodName} - ${panic}`
-      : `Contract call failed: ${contractId}.${methodName}`
+      ? `Contract call failed: ${contractId}${methodPart} - ${panic}`
+      : `Contract call failed: ${contractId}${methodPart}`
 
     super(message, "FUNCTION_CALL_ERROR")
     this.name = "FunctionCallError"
     this.contractId = contractId
-    this.methodName = methodName
+    if (methodName !== undefined) {
+      this.methodName = methodName
+    }
+    this.logs = logs
     if (panic !== undefined) {
       this.panic = panic
     }
