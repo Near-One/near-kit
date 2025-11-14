@@ -46,7 +46,11 @@ export class Near {
 
     // Initialize RPC client
     const rpcUrl = validatedConfig.rpcUrl || networkConfig.rpcUrl
-    this.rpc = new RpcClient(rpcUrl, validatedConfig.headers)
+    this.rpc = new RpcClient(
+      rpcUrl,
+      validatedConfig.headers,
+      validatedConfig.retryConfig,
+    )
 
     // Initialize key store
     this.keyStore = this.resolveKeyStore(validatedConfig.keyStore)

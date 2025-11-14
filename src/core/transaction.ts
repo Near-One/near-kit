@@ -31,7 +31,11 @@
  */
 
 import { base58 } from "@scure/base"
-import { InvalidKeyError, NearError } from "../errors/index.js"
+import {
+  InvalidKeyError,
+  InvalidNonceError,
+  NearError,
+} from "../errors/index.js"
 import { parseKey, parsePublicKey } from "../utils/key.js"
 import {
   type Amount,
@@ -475,45 +479,70 @@ export class TransactionBuilder {
       return result as FinalExecutionOutcomeMap[W]
     }
 
-    // Build transaction using private key/signer approach
-    const transaction = await this.build()
-
-    // Serialize transaction using Borsh
-    const serialized = serializeTransaction(transaction)
-
-    // NEAR protocol requires signing the SHA256 hash of the serialized transaction
-    const messageHash = (await crypto.subtle.digest(
-      "SHA-256",
-      serialized as Uint8Array<ArrayBuffer>,
-    )) as ArrayBuffer
-    const messageHashArray = new Uint8Array(messageHash)
-
-    // Use custom signer if provided, otherwise fall back to keyStore
-    const signature = this.signer
-      ? await this.signer(messageHashArray)
-      : await (async () => {
-          const keyPair = await this.keyStore.get(this.signerId)
-          if (!keyPair) {
-            throw new InvalidKeyError(
-              `No key found for account: ${this.signerId}`,
-            )
-          }
-          return keyPair.sign(messageHashArray)
-        })()
-
-    const signedTx: SignedTransaction = {
-      transaction,
-      signature,
-    }
-
-    // Serialize signed transaction using Borsh
-    const signedSerialized = serializeSignedTransaction(signedTx)
-
     // Determine waitUntil - use option if provided, otherwise use default
     const waitUntil = (options?.waitUntil ?? this.defaultWaitUntil) as W
 
-    // Send to network
-    return await this.rpc.sendTransaction(signedSerialized, waitUntil)
+    // Retry loop for InvalidNonceError
+    const MAX_NONCE_RETRIES = 3
+    let lastError: Error | null = null
+
+    for (let attempt = 0; attempt < MAX_NONCE_RETRIES; attempt++) {
+      try {
+        // Build transaction using private key/signer approach
+        // This fetches a fresh nonce from the network each time
+        const transaction = await this.build()
+
+        // Serialize transaction using Borsh
+        const serialized = serializeTransaction(transaction)
+
+        // NEAR protocol requires signing the SHA256 hash of the serialized transaction
+        const messageHash = (await crypto.subtle.digest(
+          "SHA-256",
+          serialized as Uint8Array<ArrayBuffer>,
+        )) as ArrayBuffer
+        const messageHashArray = new Uint8Array(messageHash)
+
+        // Use custom signer if provided, otherwise fall back to keyStore
+        const signature = this.signer
+          ? await this.signer(messageHashArray)
+          : await (async () => {
+              const keyPair = await this.keyStore.get(this.signerId)
+              if (!keyPair) {
+                throw new InvalidKeyError(
+                  `No key found for account: ${this.signerId}`,
+                )
+              }
+              return keyPair.sign(messageHashArray)
+            })()
+
+        const signedTx: SignedTransaction = {
+          transaction,
+          signature,
+        }
+
+        // Serialize signed transaction using Borsh
+        const signedSerialized = serializeSignedTransaction(signedTx)
+
+        // Send to network
+        return await this.rpc.sendTransaction(signedSerialized, waitUntil)
+      } catch (error) {
+        lastError = error as Error
+
+        // Check if it's an InvalidNonceError
+        if (error instanceof InvalidNonceError) {
+          // If we have retries left, continue the loop to rebuild with fresh nonce
+          if (attempt < MAX_NONCE_RETRIES - 1) {
+            continue
+          }
+        }
+
+        // Not an InvalidNonceError or out of retries - throw the error
+        throw error
+      }
+    }
+
+    // This should never be reached, but TypeScript needs it
+    throw lastError || new NearError("Unknown error during transaction send")
   }
 
   /**
