@@ -56,8 +56,9 @@ export const Gas = {
  * @param gas - Gas with unit (e.g., "30 Tgas") or raw gas number
  * @returns Gas in raw units as string
  */
-export function parseGas(gas: GasInput): string {
-  const trimmed = gas.trim()
+export function parseGas(gas: GasInput | number): string {
+  const gasStr = typeof gas === "number" ? gas.toString() : gas
+  const trimmed = gasStr.trim()
 
   // Parse "X Tgas" format (case insensitive)
   const tgasMatch = trimmed.match(/^([\d.]+)\s+Tgas$/i)
@@ -93,4 +94,23 @@ export function formatGas(gas: string | bigint, precision = 2): string {
   const amount = typeof gas === "string" ? BigInt(gas) : gas
   const tgas = Number(amount) / Number(GAS_PER_TGAS)
   return `${tgas.toFixed(precision)} Tgas`
+}
+
+/**
+ * Convert TGas to raw gas units
+ * @param tgas - Amount in TGas
+ * @returns Gas amount as string
+ */
+export function toGas(tgas: number): string {
+  return (BigInt(Math.floor(tgas * 1e12)) * BigInt(1)).toString()
+}
+
+/**
+ * Convert raw gas to TGas
+ * @param gas - Gas amount in raw units
+ * @returns Amount in TGas
+ */
+export function toTGas(gas: string | bigint): number {
+  const amount = typeof gas === "string" ? BigInt(gas) : gas
+  return Number(amount) / Number(GAS_PER_TGAS)
 }
