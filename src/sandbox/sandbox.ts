@@ -13,7 +13,6 @@ import os from "node:os"
 import path from "node:path"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
-import type { ReadableStream as WebReadableStream } from "node:stream/web"
 import * as tar from "tar"
 
 const DEFAULT_VERSION = "2.9.0"
@@ -246,11 +245,7 @@ async function downloadBinary(version: string): Promise<string> {
       }
 
       const stream = fs.createWriteStream(archivePath)
-      // Convert DOM ReadableStream to Node.js ReadableStream
-      await pipeline(
-        Readable.fromWeb(response.body as unknown as WebReadableStream),
-        stream,
-      )
+      await pipeline(Readable.fromWeb(response.body), stream)
     } finally {
       clearTimeout(timeout)
     }
