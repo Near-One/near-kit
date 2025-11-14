@@ -118,6 +118,26 @@ const [balance, status, exists] = await near.batch(
 );
 ```
 
+## Local Testing with Sandbox
+
+```typescript
+import { Sandbox } from '@near/client';
+
+const sandbox = await Sandbox.start();
+const near = new Near({ network: sandbox });
+// ... run tests
+await sandbox.stop();
+```
+
+**With test framework:**
+```typescript
+let sandbox: Sandbox;
+beforeAll(async () => { sandbox = await Sandbox.start(); });
+afterAll(async () => { await sandbox.stop(); });
+```
+
+> **Note:** Requires file descriptor limit ≥65,535 (`ulimit -n`). See [setup instructions](./src/sandbox/README.md).
+
 ## Key Management
 
 ```typescript
