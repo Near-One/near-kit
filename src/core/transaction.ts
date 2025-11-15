@@ -46,6 +46,7 @@ import {
 } from "../utils/validation.js"
 import * as actions from "./actions.js"
 import { DEFAULT_FUNCTION_CALL_GAS } from "./constants.js"
+import { NonceManager } from "./nonce-manager.js"
 import type { RpcClient } from "./rpc/rpc.js"
 import {
   type AccessKeyPermissionBorsh,
@@ -99,6 +100,9 @@ function toAccessKeyPermissionBorsh(
 }
 
 export class TransactionBuilder {
+  // Shared nonce manager across all TransactionBuilder instances
+  private static nonceManager = new NonceManager()
+
   private signerId: string
   private actions: Action[]
   private receiverId?: string
@@ -439,9 +443,18 @@ export class TransactionBuilder {
     }
 
     const publicKey = keyPair.publicKey
-    const accessKey = await this.rpc.getAccessKey(
+
+    // Use NonceManager to get next nonce (handles concurrent transactions)
+    const nonce = await TransactionBuilder.nonceManager.getNextNonce(
       this.signerId,
       publicKey.toString(),
+      async () => {
+        const accessKey = await this.rpc.getAccessKey(
+          this.signerId,
+          publicKey.toString(),
+        )
+        return BigInt(accessKey.nonce)
+      },
     )
 
     const status = await this.rpc.getStatus()
@@ -450,9 +463,7 @@ export class TransactionBuilder {
     const transaction: Transaction = {
       signerId: this.signerId,
       publicKey,
-      // NEAR access key nonce represents the last used nonce,
-      // so next transaction should use nonce + 1
-      nonce: BigInt(accessKey.nonce) + BigInt(1),
+      nonce,
       receiverId: this.receiverId,
       actions: this.actions,
       blockHash,
@@ -704,6 +715,14 @@ export class TransactionBuilder {
 
         // Check if it's an InvalidNonceError
         if (error instanceof InvalidNonceError) {
+          // Invalidate cached nonce to force fresh fetch on retry
+          if (this.cachedSignedTx) {
+            TransactionBuilder.nonceManager.invalidate(
+              this.signerId,
+              this.cachedSignedTx.signedTx.transaction.publicKey.toString(),
+            )
+          }
+
           // If we have retries left, continue the loop to rebuild with fresh nonce
           if (attempt < MAX_NONCE_RETRIES - 1) {
             continue
