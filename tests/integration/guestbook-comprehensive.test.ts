@@ -185,10 +185,14 @@ describe("Guestbook Contract - Comprehensive Tests", () => {
       expect(messages[0]).toHaveProperty("premium")
 
       // Verify message content (order matters - should be chronological)
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(messages[0]!.text).toBe("Hello from user1!")
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(messages[0]!.sender).toBe(user1Id)
 
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(messages[1]!.text).toBe("Greetings from user2!")
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(messages[1]!.sender).toBe(user2Id)
 
       console.log("✓ All messages retrieved with correct structure")
@@ -206,6 +210,7 @@ describe("Guestbook Contract - Comprehensive Tests", () => {
       })
 
       expect(messages.length).toBe(2) // Should get messages from index 2 onwards
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(messages[0]!.text).toBe("Second message from user1")
 
       console.log("✓ Pagination with from_index works")
@@ -223,7 +228,9 @@ describe("Guestbook Contract - Comprehensive Tests", () => {
       })
 
       expect(messages.length).toBe(2)
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(messages[0]!.text).toBe("Hello from user1!")
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(messages[1]!.text).toBe("Greetings from user2!")
 
       console.log("✓ Pagination with limit works")
@@ -242,7 +249,9 @@ describe("Guestbook Contract - Comprehensive Tests", () => {
       })
 
       expect(messages.length).toBe(2)
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(messages[0]!.text).toBe("Greetings from user2!")
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(messages[1]!.text).toBe("Second message from user1")
 
       console.log("✓ Pagination with from_index and limit works")

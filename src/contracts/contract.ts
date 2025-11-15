@@ -24,7 +24,14 @@ import type { CallOptions } from "../core/types.js"
  * The call method will automatically get options parameter:
  * increment: (args: { amount: number }, options?: CallOptions) => Promise<void>
  */
-export type Contract<T extends { view: any; call: any }> = {
+export type Contract<
+  T extends {
+    // biome-ignore lint/suspicious/noExplicitAny: Generic constraint needs any for flexibility
+    view: Record<string, (...args: any[]) => any>
+    // biome-ignore lint/suspicious/noExplicitAny: Generic constraint needs any for flexibility
+    call: Record<string, (...args: any[]) => any>
+  },
+> = {
   view: T["view"]
   call: {
     [K in keyof T["call"]]: T["call"][K] extends (
@@ -59,7 +66,7 @@ export interface ContractMethods {
  */
 export function createContract<T extends ContractMethods>(
   near: Near,
-  contractId: string
+  contractId: string,
 ): T {
   const proxy = {
     view: new Proxy(
@@ -68,12 +75,12 @@ export function createContract<T extends ContractMethods>(
         get: (_target, methodName: string) => {
           return async (
             args?: object | Uint8Array,
-            options?: BlockReference
+            options?: BlockReference,
           ) => {
             return await near.view(contractId, methodName, args || {}, options)
           }
         },
-      }
+      },
     ),
     call: new Proxy(
       {},
@@ -84,11 +91,11 @@ export function createContract<T extends ContractMethods>(
               contractId,
               methodName,
               args || {},
-              options || {}
+              options || {},
             )
           }
         },
-      }
+      },
     ),
   }
 
@@ -101,7 +108,7 @@ export function createContract<T extends ContractMethods>(
 export function addContractMethod(nearPrototype: typeof Near.prototype): void {
   nearPrototype.contract = function <T extends ContractMethods>(
     this: Near,
-    contractId: string
+    contractId: string,
   ): T {
     return createContract<T>(this, contractId)
   }

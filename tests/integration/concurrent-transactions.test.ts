@@ -277,9 +277,11 @@ describe("Concurrent Transactions", () => {
       const results = await Promise.allSettled(promises)
 
       // View call should definitely succeed
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(results[2]!.status).toBe("fulfilled")
 
       const writeSuccesses = [0, 1, 3].filter(
+        // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
         (i) => results[i]!.status === "fulfilled",
       ).length
 
@@ -438,8 +440,11 @@ describe("Concurrent Transactions", () => {
       const results = await Promise.allSettled(promises)
 
       // Should have 2 successes and 1 failure
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(results[0]!.status).toBe("fulfilled")
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(results[1]!.status).toBe("rejected")
+      // biome-ignore lint/style/noNonNullAssertion: test knows array element exists
       expect(results[2]!.status).toBe("fulfilled")
 
       console.log("✓ Mix of successes and failures handled correctly")

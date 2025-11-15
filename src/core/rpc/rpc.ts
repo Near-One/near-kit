@@ -8,10 +8,7 @@ import {
   NearError,
   NetworkError,
 } from "../../errors/index.js"
-import type {
-  BlockReference,
-  RpcRetryConfigInput,
-} from "../config-schemas.js"
+import type { BlockReference, RpcRetryConfigInput } from "../config-schemas.js"
 import type {
   AccessKeyView,
   AccountView,
