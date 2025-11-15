@@ -249,20 +249,25 @@ export function parseQueryError(
 
   const errorMsg = (result as { error: string }).error
 
-  // Access key not found
-  if (errorMsg.includes("does not exist")) {
-    const accountId = context.accountId || "unknown"
-    const publicKey = context.publicKey || "unknown"
-    throw new AccessKeyDoesNotExistError(accountId, publicKey)
-  }
-
   // Function call errors (method not found, execution failures, etc.)
+  // Check this FIRST to avoid misinterpreting "Method X does not exist" as access key error
   if (context.contractId) {
     throw new FunctionCallError(
       context.contractId,
       context.methodName,
       errorMsg,
     )
+  }
+
+  // Access key not found
+  // Only check this for access key queries (when accountId/publicKey are in context)
+  if (
+    (context.accountId || context.publicKey) &&
+    errorMsg.includes("does not exist")
+  ) {
+    const accountId = context.accountId || "unknown"
+    const publicKey = context.publicKey || "unknown"
+    throw new AccessKeyDoesNotExistError(accountId, publicKey)
   }
 
   // Generic query error
