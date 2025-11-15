@@ -4,8 +4,6 @@
 
 import { base64 } from "@scure/base"
 import {
-  AccessKeyDoesNotExistError,
-  FunctionCallError,
   InvalidTransactionError,
   NearError,
   NetworkError,
@@ -27,6 +25,7 @@ import {
   checkOutcomeForFunctionCallError,
   extractErrorMessage,
   isRetryableStatus,
+  parseQueryError,
   parseRpcError,
 } from "./rpc-error-handler.js"
 import {
@@ -211,10 +210,7 @@ export class RpcClient {
     })
 
     // Check for errors in result (NEAR returns view function errors this way)
-    if (result && typeof result === "object" && "error" in result) {
-      const errorMsg = (result as { error: string }).error
-      throw new FunctionCallError(contractId, methodName, errorMsg)
-    }
+    parseQueryError(result, { contractId, methodName })
 
     return ViewFunctionCallResultSchema.parse(result)
   }
@@ -241,14 +237,7 @@ export class RpcClient {
     })
 
     // Check for errors in result (NEAR returns access key errors this way)
-    if (result && typeof result === "object" && "error" in result) {
-      const errorMsg = (result as { error: string }).error
-      // Check if it's an access key not found error
-      if (errorMsg.includes("does not exist")) {
-        throw new AccessKeyDoesNotExistError(accountId, publicKey)
-      }
-      throw new NetworkError(`Query error: ${errorMsg}`)
-    }
+    parseQueryError(result, { accountId, publicKey })
 
     return AccessKeyViewSchema.parse(result)
   }
