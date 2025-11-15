@@ -203,7 +203,7 @@ export class Near {
   async view<T = unknown>(
     contractId: string,
     methodName: string,
-    args: object = {},
+    args: object | Uint8Array = {},
   ): Promise<T> {
     const result = await this.rpc.viewFunction(contractId, methodName, args)
 
@@ -228,15 +228,17 @@ export class Near {
   async call<T = unknown>(
     contractId: string,
     methodName: string,
-    args: object = {},
+    args: object | Uint8Array = {},
     options: CallOptions = {},
   ): Promise<T> {
     const signerId = await this.getSignerId(options.signerId)
 
     // Use wallet if available
     if (this.wallet) {
-      const argsJson = JSON.stringify(args)
-      const argsBytes = new TextEncoder().encode(argsJson)
+      const argsBytes =
+        args instanceof Uint8Array
+          ? args
+          : new TextEncoder().encode(JSON.stringify(args))
 
       const gas = options.gas
         ? normalizeGas(options.gas)

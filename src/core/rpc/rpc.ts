@@ -197,9 +197,11 @@ export class RpcClient {
     methodName: string,
     args: unknown = {},
   ): Promise<ViewFunctionCallResult> {
-    const argsBase64 = base64.encode(
-      new TextEncoder().encode(JSON.stringify(args)),
-    )
+    const argsBytes =
+      args instanceof Uint8Array
+        ? args
+        : new TextEncoder().encode(JSON.stringify(args))
+    const argsBase64 = base64.encode(argsBytes)
 
     const result = await this.call("query", {
       request_type: "call_function",

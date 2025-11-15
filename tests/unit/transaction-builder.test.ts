@@ -342,6 +342,40 @@ describe("TransactionBuilder - Action Arguments", () => {
     const decodedArgs = JSON.parse(new TextDecoder().decode(action.args))
     expect(decodedArgs).toEqual(args)
   })
+
+  test("should accept Uint8Array arguments directly (e.g., Borsh-serialized)", () => {
+    // Simulate pre-serialized bytes (e.g., from Borsh)
+    const argsBytes = new Uint8Array([1, 2, 3, 4, 5])
+    const builder = createBuilder().functionCall(
+      "contract.near",
+      "method",
+      argsBytes,
+    )
+
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
+    expect(action.args).toEqual(argsBytes)
+    expect(action.args).toBeInstanceOf(Uint8Array)
+  })
+
+  test("should pass through Uint8Array without modification", () => {
+    // Create a specific byte sequence
+    const customBytes = new Uint8Array([0xde, 0xad, 0xbe, 0xef])
+    const builder = createBuilder().functionCall(
+      "contract.near",
+      "borsh_method",
+      customBytes,
+    )
+
+    // @ts-expect-error - accessing private field for testing
+    const action = builder.actions[0].functionCall
+    // Verify bytes are identical (not JSON-encoded)
+    expect(action.args).toEqual(customBytes)
+    expect(action.args[0]).toBe(0xde)
+    expect(action.args[1]).toBe(0xad)
+    expect(action.args[2]).toBe(0xbe)
+    expect(action.args[3]).toBe(0xef)
+  })
 })
 
 describe("TransactionBuilder - Complex Scenarios", () => {

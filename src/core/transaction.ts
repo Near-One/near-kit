@@ -168,11 +168,13 @@ export class TransactionBuilder {
   functionCall(
     contractId: string,
     methodName: string,
-    args: object = {},
+    args: object | Uint8Array = {},
     options: { gas?: Gas; attachedDeposit?: Amount } = {},
   ): this {
-    const argsJson = JSON.stringify(args)
-    const argsBytes = new TextEncoder().encode(argsJson)
+    const argsBytes =
+      args instanceof Uint8Array
+        ? args
+        : new TextEncoder().encode(JSON.stringify(args))
 
     const gas = options.gas
       ? normalizeGas(options.gas)
