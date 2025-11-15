@@ -6,7 +6,44 @@
  * - @hot-labs/near-connect
  */
 
-import type { WalletConnection } from "../core/types.js"
+import type {
+  FinalExecutionOutcome,
+  SignedMessage,
+  WalletConnection,
+} from "../core/types.js"
+
+// External wallet types (not imported to avoid peer dependencies)
+type WalletSelectorWallet = {
+  getAccounts(): Promise<Array<{ accountId: string; publicKey?: string }>>
+  signAndSendTransaction(params: {
+    signerId?: string | undefined
+    receiverId: string
+    actions: unknown[]
+  }): Promise<FinalExecutionOutcome>
+  signMessage?(params: {
+    message: string
+    recipient: string
+    nonce: Uint8Array
+  }): Promise<SignedMessage>
+}
+
+type HotConnectWallet = {
+  getAccounts(): Promise<Array<{ accountId: string; publicKey?: string }>>
+  signAndSendTransaction(params: {
+    signerId?: string | undefined
+    receiverId: string
+    actions: unknown[]
+  }): Promise<FinalExecutionOutcome>
+  signMessage?(params: {
+    message: string
+    recipient: string
+    nonce: Uint8Array
+  }): Promise<SignedMessage>
+}
+
+type HotConnectConnector = {
+  wallet(): Promise<HotConnectWallet>
+}
 
 /**
  * Adapter for @near-wallet-selector/core
@@ -34,19 +71,21 @@ import type { WalletConnection } from "../core/types.js"
  * })
  * ```
  */
-export function fromWalletSelector(wallet: any): WalletConnection {
+export function fromWalletSelector(
+  wallet: WalletSelectorWallet,
+): WalletConnection {
   return {
     async getAccounts() {
       const accounts = await wallet.getAccounts()
-      return accounts.map((acc: any) => ({
+      return accounts.map((acc) => ({
         accountId: acc.accountId,
-        publicKey: acc.publicKey,
+        ...(acc.publicKey !== undefined && { publicKey: acc.publicKey }),
       }))
     },
 
     async signAndSendTransaction(params) {
       return await wallet.signAndSendTransaction({
-        signerId: params.signerId,
+        ...(params.signerId !== undefined && { signerId: params.signerId }),
         receiverId: params.receiverId,
         actions: params.actions,
       })
@@ -93,21 +132,23 @@ export function fromWalletSelector(wallet: any): WalletConnection {
  * })
  * ```
  */
-export function fromHotConnect(connector: any): WalletConnection {
+export function fromHotConnect(
+  connector: HotConnectConnector,
+): WalletConnection {
   return {
     async getAccounts() {
       const wallet = await connector.wallet()
       const accounts = await wallet.getAccounts()
-      return accounts.map((acc: any) => ({
+      return accounts.map((acc) => ({
         accountId: acc.accountId,
-        publicKey: acc.publicKey,
+        ...(acc.publicKey !== undefined && { publicKey: acc.publicKey }),
       }))
     },
 
     async signAndSendTransaction(params) {
       const wallet = await connector.wallet()
       return await wallet.signAndSendTransaction({
-        signerId: params.signerId,
+        ...(params.signerId !== undefined && { signerId: params.signerId }),
         receiverId: params.receiverId,
         actions: params.actions,
       })

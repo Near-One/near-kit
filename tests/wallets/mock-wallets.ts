@@ -3,17 +3,33 @@
  */
 
 import type {
+  Action,
   FinalExecutionOutcome,
   SignedMessage,
   WalletAccount,
 } from "../../src/core/types.js"
+
+type TransactionParams = {
+  signerId?: string
+  receiverId: string
+  actions: Action[]
+}
+
+type CallLogEntry =
+  | { method: "getAccounts"; params: Record<string, never> }
+  | { method: "signAndSendTransaction"; params: TransactionParams }
+  | {
+      method: "signMessage"
+      params: { message: string; recipient: string; nonce: Uint8Array }
+    }
+  | { method: "wallet"; params: Record<string, never> }
 
 /**
  * Mock wallet that simulates @near-wallet-selector/core behavior
  */
 export class MockWalletSelector {
   private accounts: WalletAccount[]
-  private callLog: Array<{ method: string; params: any }> = []
+  private callLog: CallLogEntry[] = []
 
   constructor(accounts: WalletAccount[] = []) {
     this.accounts = accounts
@@ -27,7 +43,7 @@ export class MockWalletSelector {
   async signAndSendTransaction(params: {
     signerId?: string
     receiverId: string
-    actions: any[]
+    actions: Action[]
   }): Promise<FinalExecutionOutcome> {
     this.callLog.push({ method: "signAndSendTransaction", params })
 
@@ -41,6 +57,7 @@ export class MockWalletSelector {
         public_key: "ed25519:...",
         nonce: 1,
         receiver_id: params.receiverId,
+        // biome-ignore lint/suspicious/noExplicitAny: RPC schema expects any[] for transaction actions
         actions: params.actions as any,
         signature: "ed25519:...",
         hash: "mock-tx-hash",
@@ -95,7 +112,7 @@ export class MockWalletSelector {
  */
 export class MockHotConnect {
   private _wallet: MockHotConnectWallet
-  private callLog: Array<{ method: string; params: any }> = []
+  private callLog: CallLogEntry[] = []
 
   constructor(accounts: WalletAccount[] = []) {
     this._wallet = new MockHotConnectWallet(accounts)
@@ -107,7 +124,7 @@ export class MockHotConnect {
   }
 
   // Event handlers (simplified for testing)
-  on(_event: string, _callback: Function) {
+  on(_event: string, _callback: (...args: never[]) => unknown) {
     // Mock implementation - not used in tests
   }
 
@@ -131,7 +148,7 @@ export class MockHotConnect {
  */
 class MockHotConnectWallet {
   private accounts: WalletAccount[]
-  private callLog: Array<{ method: string; params: any }> = []
+  private callLog: CallLogEntry[] = []
 
   constructor(accounts: WalletAccount[] = []) {
     this.accounts = accounts
@@ -145,7 +162,7 @@ class MockHotConnectWallet {
   async signAndSendTransaction(params: {
     signerId?: string
     receiverId: string
-    actions: any[]
+    actions: Action[]
   }): Promise<FinalExecutionOutcome> {
     this.callLog.push({ method: "signAndSendTransaction", params })
 
@@ -159,6 +176,7 @@ class MockHotConnectWallet {
         public_key: "ed25519:...",
         nonce: 1,
         receiver_id: params.receiverId,
+        // biome-ignore lint/suspicious/noExplicitAny: RPC schema expects any[] for transaction actions
         actions: params.actions as any,
         signature: "ed25519:...",
         hash: "mock-tx-hash",
@@ -224,7 +242,7 @@ export class MockWalletWithoutSignMessage {
   async signAndSendTransaction(params: {
     signerId?: string
     receiverId: string
-    actions: any[]
+    actions: Action[]
   }): Promise<FinalExecutionOutcome> {
     // Return a mock successful outcome in RPC format
     return {
@@ -236,6 +254,7 @@ export class MockWalletWithoutSignMessage {
         public_key: "ed25519:...",
         nonce: 1,
         receiver_id: params.receiverId,
+        // biome-ignore lint/suspicious/noExplicitAny: RPC schema expects any[] for transaction actions
         actions: params.actions as any,
         signature: "ed25519:...",
         hash: "mock-tx-hash",
