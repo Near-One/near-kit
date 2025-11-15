@@ -410,7 +410,15 @@ export class TransactionBuilder {
     }
 
     // Get key pair - either from signWith() or keyStore
-    const keyPair = this.keyPair || (await this.keyStore.get(this.signerId))
+    // Ensure any pending keystore initialization is complete before accessing keyStore
+    let keyPair = this.keyPair
+    if (!keyPair) {
+      if (this.ensureKeyStoreReady) {
+        await this.ensureKeyStoreReady()
+      }
+      keyPair = await this.keyStore.get(this.signerId)
+    }
+
     if (!keyPair) {
       throw new InvalidKeyError(`No key found for account: ${this.signerId}`)
     }
