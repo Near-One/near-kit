@@ -80,10 +80,18 @@ export const TxExecutionStatusSchema = z.enum([
 /**
  * Schema for RPC retry configuration
  */
-export const RpcRetryConfigSchema = z.object({
-  maxRetries: z.number().int().min(0).optional(),
-  initialDelayMs: z.number().int().min(0).optional(),
-})
+export const RpcRetryConfigSchema = z
+  .object({
+    maxRetries: z.number().int().min(0),
+    initialDelayMs: z.number().int().min(0),
+  })
+  .partial()
+
+/**
+ * Inferred type for RPC retry configuration input
+ * Allows partial configuration with optional fields that can be undefined
+ */
+export type RpcRetryConfigInput = z.infer<typeof RpcRetryConfigSchema>
 
 /**
  * Schema for NEAR client configuration
@@ -120,7 +128,7 @@ export function resolveNetworkConfig(network?: NetworkConfig): {
   // Default to mainnet
   if (!network) {
     const envNetwork =
-      typeof process !== "undefined" ? process.env.NEAR_NETWORK : undefined
+      typeof process !== "undefined" ? process.env["NEAR_NETWORK"] : undefined
     if (
       envNetwork &&
       (envNetwork === "mainnet" ||

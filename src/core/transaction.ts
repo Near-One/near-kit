@@ -128,7 +128,9 @@ export class TransactionBuilder {
     this.actions = []
     this.rpc = rpc
     this.keyStore = keyStore
-    this.ensureKeyStoreReady = ensureKeyStoreReady
+    if (ensureKeyStoreReady !== undefined) {
+      this.ensureKeyStoreReady = ensureKeyStoreReady
+    }
     if (signer !== undefined) {
       this.signer = signer
     }
@@ -142,7 +144,7 @@ export class TransactionBuilder {
    * Invalidate cached signed transaction when builder state changes
    */
   private invalidateCache(): this {
-    this.cachedSignedTx = undefined
+    delete this.cachedSignedTx
     return this
   }
 
@@ -428,7 +430,7 @@ export class TransactionBuilder {
       if (this.ensureKeyStoreReady) {
         await this.ensureKeyStoreReady()
       }
-      keyPair = await this.keyStore.get(this.signerId)
+      keyPair = (await this.keyStore.get(this.signerId)) ?? undefined
     }
 
     if (!keyPair) {
@@ -662,22 +664,32 @@ export class TransactionBuilder {
         // Sign if not already signed (or re-sign on retry for fresh nonce)
         if (!this.cachedSignedTx || attempt > 0) {
           // Clear cache on retry to get fresh nonce
-          this.cachedSignedTx = undefined
+          delete this.cachedSignedTx
           await this.sign()
         }
 
-        const { signedTx, hash } = this.cachedSignedTx!
+        if (!this.cachedSignedTx) {
+          throw new NearError(
+            "Failed to sign transaction",
+            "TRANSACTION_SIGNING_FAILED",
+          )
+        }
+
+        const { signedTx, hash } = this.cachedSignedTx
 
         // Serialize signed transaction using Borsh
         const signedSerialized = serializeSignedTransaction(signedTx)
 
         // Send to network
-        const result = await this.rpc.sendTransaction(signedSerialized, waitUntil)
+        const result = await this.rpc.sendTransaction(
+          signedSerialized,
+          waitUntil,
+        )
 
         // Inject minimal transaction fields if not present (for NONE/INCLUDED/INCLUDED_FINAL)
         // This ensures transaction.hash is always available
         if (!("transaction" in result) || !result.transaction) {
-          ;(result as any).transaction = {
+          ;(result as Record<string, unknown>)["transaction"] = {
             hash,
             signer_id: signedTx.transaction.signerId,
             receiver_id: this.receiverId,
@@ -703,7 +715,13 @@ export class TransactionBuilder {
     }
 
     // This should never be reached, but TypeScript needs it
-    throw lastError || new NearError("Unknown error during transaction send")
+    throw (
+      lastError ||
+      new NearError(
+        "Unknown error during transaction send",
+        "UNKNOWN_TRANSACTION_ERROR",
+      )
+    )
   }
 
   /**
