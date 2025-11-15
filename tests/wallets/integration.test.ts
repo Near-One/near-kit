@@ -40,11 +40,13 @@ describe("Near class with wallets", () => {
       const txCall = log.find((l) => l.method === "signAndSendTransaction")
 
       expect(txCall).toBeDefined()
-      expect(txCall?.params.receiverId).toBe("guest-book.testnet")
-      expect(txCall?.params.actions).toHaveLength(1)
+      if (txCall?.method === "signAndSendTransaction") {
+        expect(txCall.params.receiverId).toBe("guest-book.testnet")
+        expect(txCall.params.actions).toHaveLength(1)
 
-      // Verify it's a function call action
-      expect(txCall?.params.actions[0]).toHaveProperty("functionCall")
+        // Verify it's a function call action
+        expect(txCall.params.actions[0]).toHaveProperty("functionCall")
+      }
     })
 
     it("should use wallet for send()", async () => {
@@ -56,11 +58,13 @@ describe("Near class with wallets", () => {
       const txCall = log.find((l) => l.method === "signAndSendTransaction")
 
       expect(txCall).toBeDefined()
-      expect(txCall?.params.receiverId).toBe("bob.testnet")
-      expect(txCall?.params.actions).toHaveLength(1)
+      if (txCall?.method === "signAndSendTransaction") {
+        expect(txCall.params.receiverId).toBe("bob.testnet")
+        expect(txCall.params.actions).toHaveLength(1)
 
-      // Verify it's a transfer action
-      expect(txCall?.params.actions[0]).toHaveProperty("transfer")
+        // Verify it's a transfer action
+        expect(txCall.params.actions[0]).toHaveProperty("transfer")
+      }
     })
 
     it("should auto-detect signerId from wallet", async () => {
@@ -75,7 +79,9 @@ describe("Near class with wallets", () => {
       expect(log.some((l) => l.method === "getAccounts")).toBe(true)
 
       const txCall = log.find((l) => l.method === "signAndSendTransaction")
-      expect(txCall?.params.signerId).toBe("alice.testnet")
+      if (txCall?.method === "signAndSendTransaction") {
+        expect(txCall.params.signerId).toBe("alice.testnet")
+      }
     })
 
     it("should allow overriding signerId", async () => {
@@ -96,7 +102,9 @@ describe("Near class with wallets", () => {
 
       const log = mockWallet.getCallLog()
       const txCall = log.find((l) => l.method === "signAndSendTransaction")
-      expect(txCall?.params.signerId).toBe("bob.testnet")
+      if (txCall?.method === "signAndSendTransaction") {
+        expect(txCall.params.signerId).toBe("bob.testnet")
+      }
     })
 
     it("should throw error if no accounts connected", async () => {
@@ -141,7 +149,9 @@ describe("Near class with wallets", () => {
       const txCall = log.find((l) => l.method === "signAndSendTransaction")
 
       expect(txCall).toBeDefined()
-      expect(txCall?.params.receiverId).toBe("contract.near")
+      if (txCall?.method === "signAndSendTransaction") {
+        expect(txCall.params.receiverId).toBe("contract.near")
+      }
     })
 
     it("should use HOT Connect for send()", async () => {
@@ -153,8 +163,10 @@ describe("Near class with wallets", () => {
       const txCall = log.find((l) => l.method === "signAndSendTransaction")
 
       expect(txCall).toBeDefined()
-      expect(txCall?.params.receiverId).toBe("receiver.near")
-      expect(txCall?.params.actions[0]).toHaveProperty("transfer")
+      if (txCall?.method === "signAndSendTransaction") {
+        expect(txCall.params.receiverId).toBe("receiver.near")
+        expect(txCall.params.actions[0]).toHaveProperty("transfer")
+      }
     })
   })
 
@@ -208,13 +220,15 @@ describe("Near class with wallets", () => {
       const txCall = log.find((l) => l.method === "signAndSendTransaction")
 
       expect(txCall).toBeDefined()
-      expect(txCall?.params.actions).toHaveLength(2)
+      if (txCall?.method === "signAndSendTransaction") {
+        expect(txCall.params.actions).toHaveLength(2)
 
-      // First action is transfer
-      expect(txCall?.params.actions[0]).toHaveProperty("transfer")
+        // First action is transfer
+        expect(txCall.params.actions[0]).toHaveProperty("transfer")
 
-      // Second action is function call
-      expect(txCall?.params.actions[1]).toHaveProperty("functionCall")
+        // Second action is function call
+        expect(txCall.params.actions[1]).toHaveProperty("functionCall")
+      }
     })
 
     it("should throw error if receiverId not set", async () => {

@@ -9,12 +9,27 @@ import type {
   WalletAccount,
 } from "../../src/core/types.js"
 
+type TransactionParams = {
+  signerId?: string
+  receiverId: string
+  actions: Action[]
+}
+
+type CallLogEntry =
+  | { method: "getAccounts"; params: Record<string, never> }
+  | { method: "signAndSendTransaction"; params: TransactionParams }
+  | {
+      method: "signMessage"
+      params: { message: string; recipient: string; nonce: Uint8Array }
+    }
+  | { method: "wallet"; params: Record<string, never> }
+
 /**
  * Mock wallet that simulates @near-wallet-selector/core behavior
  */
 export class MockWalletSelector {
   private accounts: WalletAccount[]
-  private callLog: Array<{ method: string; params: unknown }> = []
+  private callLog: CallLogEntry[] = []
 
   constructor(accounts: WalletAccount[] = []) {
     this.accounts = accounts
@@ -42,7 +57,8 @@ export class MockWalletSelector {
         public_key: "ed25519:...",
         nonce: 1,
         receiver_id: params.receiverId,
-        actions: params.actions as unknown,
+        // biome-ignore lint/suspicious/noExplicitAny: RPC schema expects any[] for transaction actions
+        actions: params.actions as any,
         signature: "ed25519:...",
         hash: "mock-tx-hash",
       },
@@ -96,7 +112,7 @@ export class MockWalletSelector {
  */
 export class MockHotConnect {
   private _wallet: MockHotConnectWallet
-  private callLog: Array<{ method: string; params: unknown }> = []
+  private callLog: CallLogEntry[] = []
 
   constructor(accounts: WalletAccount[] = []) {
     this._wallet = new MockHotConnectWallet(accounts)
@@ -132,7 +148,7 @@ export class MockHotConnect {
  */
 class MockHotConnectWallet {
   private accounts: WalletAccount[]
-  private callLog: Array<{ method: string; params: unknown }> = []
+  private callLog: CallLogEntry[] = []
 
   constructor(accounts: WalletAccount[] = []) {
     this.accounts = accounts
@@ -160,7 +176,8 @@ class MockHotConnectWallet {
         public_key: "ed25519:...",
         nonce: 1,
         receiver_id: params.receiverId,
-        actions: params.actions as unknown,
+        // biome-ignore lint/suspicious/noExplicitAny: RPC schema expects any[] for transaction actions
+        actions: params.actions as any,
         signature: "ed25519:...",
         hash: "mock-tx-hash",
       },
@@ -237,7 +254,8 @@ export class MockWalletWithoutSignMessage {
         public_key: "ed25519:...",
         nonce: 1,
         receiver_id: params.receiverId,
-        actions: params.actions as unknown,
+        // biome-ignore lint/suspicious/noExplicitAny: RPC schema expects any[] for transaction actions
+        actions: params.actions as any,
         signature: "ed25519:...",
         hash: "mock-tx-hash",
       },

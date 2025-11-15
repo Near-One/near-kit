@@ -6,40 +6,39 @@
  * - @hot-labs/near-connect
  */
 
-import type { WalletConnection } from "../core/types.js"
+import type {
+  FinalExecutionOutcome,
+  SignedMessage,
+  WalletConnection,
+} from "../core/types.js"
 
 // External wallet types (not imported to avoid peer dependencies)
-type WalletAccount = {
-  accountId: string
-  publicKey: string
-}
-
 type WalletSelectorWallet = {
-  getAccounts(): Promise<WalletAccount[]>
+  getAccounts(): Promise<Array<{ accountId: string; publicKey?: string }>>
   signAndSendTransaction(params: {
-    signerId?: string
+    signerId?: string | undefined
     receiverId: string
     actions: unknown[]
-  }): Promise<unknown>
+  }): Promise<FinalExecutionOutcome>
   signMessage?(params: {
     message: string
     recipient: string
     nonce: Uint8Array
-  }): Promise<unknown>
+  }): Promise<SignedMessage>
 }
 
 type HotConnectWallet = {
-  getAccounts(): Promise<WalletAccount[]>
+  getAccounts(): Promise<Array<{ accountId: string; publicKey?: string }>>
   signAndSendTransaction(params: {
-    signerId?: string
+    signerId?: string | undefined
     receiverId: string
     actions: unknown[]
-  }): Promise<unknown>
+  }): Promise<FinalExecutionOutcome>
   signMessage?(params: {
     message: string
     recipient: string
     nonce: Uint8Array
-  }): Promise<unknown>
+  }): Promise<SignedMessage>
 }
 
 type HotConnectConnector = {
@@ -80,13 +79,13 @@ export function fromWalletSelector(
       const accounts = await wallet.getAccounts()
       return accounts.map((acc) => ({
         accountId: acc.accountId,
-        publicKey: acc.publicKey,
+        ...(acc.publicKey !== undefined && { publicKey: acc.publicKey }),
       }))
     },
 
     async signAndSendTransaction(params) {
       return await wallet.signAndSendTransaction({
-        signerId: params.signerId,
+        ...(params.signerId !== undefined && { signerId: params.signerId }),
         receiverId: params.receiverId,
         actions: params.actions,
       })
@@ -142,14 +141,14 @@ export function fromHotConnect(
       const accounts = await wallet.getAccounts()
       return accounts.map((acc) => ({
         accountId: acc.accountId,
-        publicKey: acc.publicKey,
+        ...(acc.publicKey !== undefined && { publicKey: acc.publicKey }),
       }))
     },
 
     async signAndSendTransaction(params) {
       const wallet = await connector.wallet()
       return await wallet.signAndSendTransaction({
-        signerId: params.signerId,
+        ...(params.signerId !== undefined && { signerId: params.signerId }),
         receiverId: params.receiverId,
         actions: params.actions,
       })

@@ -51,8 +51,11 @@ describe("Wallet Adapters", () => {
           "SuccessValue" in result.status,
       ).toBe(true)
       expect(mockWallet.getCallLog()).toHaveLength(1)
-      expect(mockWallet.getCallLog()[0]?.method).toBe("signAndSendTransaction")
-      expect(mockWallet.getCallLog()[0]?.params.receiverId).toBe("bob.near")
+      const logEntry = mockWallet.getCallLog()[0]
+      expect(logEntry?.method).toBe("signAndSendTransaction")
+      if (logEntry?.method === "signAndSendTransaction") {
+        expect(logEntry.params.receiverId).toBe("bob.near")
+      }
     })
 
     it("should adapt wallet-selector signMessage", async () => {
