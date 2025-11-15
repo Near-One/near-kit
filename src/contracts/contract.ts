@@ -9,8 +9,8 @@ import type { CallOptions } from "../core/types.js"
  * Contract method interface
  *
  * Methods can be defined as:
- * - View methods: (args?: ArgsType) => Promise<ReturnType>
- * - Call methods: (args?: ArgsType, options?: CallOptions) => Promise<ReturnType>
+ * - View methods: (args?: ArgsType | Uint8Array) => Promise<ReturnType>
+ * - Call methods: (args?: ArgsType | Uint8Array, options?: CallOptions) => Promise<ReturnType>
  */
 export interface ContractMethods {
   view: Record<string, (args?: unknown) => Promise<unknown>>
@@ -32,7 +32,7 @@ export function createContract<T extends ContractMethods>(
       {},
       {
         get: (_target, methodName: string) => {
-          return async (args?: object) => {
+          return async (args?: object | Uint8Array) => {
             return await near.view(contractId, methodName, args || {})
           }
         },
@@ -42,7 +42,7 @@ export function createContract<T extends ContractMethods>(
       {},
       {
         get: (_target, methodName: string) => {
-          return async (args?: object, options?: CallOptions) => {
+          return async (args?: object | Uint8Array, options?: CallOptions) => {
             return await near.call(
               contractId,
               methodName,
