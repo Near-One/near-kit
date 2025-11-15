@@ -61,10 +61,13 @@ describe("sendTransaction - RPC Response Validation", () => {
       expect(result).toBeDefined()
       expect(result.final_execution_status).toBe("NONE")
 
-      // NONE mode returns minimal response - transaction submitted but not executed
-      // No status field is present since execution hasn't started
+      // NONE mode returns minimal response with transaction hash for tracking
+      // Transaction field is injected client-side to provide the hash
+      expect(result.transaction).toBeDefined()
+      expect(result.transaction.hash).toBeDefined()
+
+      // But execution-related fields are not present since execution hasn't started
       expect("status" in result).toBe(false)
-      expect("transaction" in result).toBe(false)
       expect("transaction_outcome" in result).toBe(false)
 
       console.log(
