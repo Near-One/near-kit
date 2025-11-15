@@ -38,6 +38,12 @@ interface ValidatorKey {
 
 export interface SandboxOptions {
   version?: string
+  /**
+   * Whether to spawn the sandbox process as detached.
+   * Default: true
+   * Set to false in test environments to prevent the process from being killed by test runners.
+   */
+  detached?: boolean
 }
 
 /**
@@ -86,6 +92,7 @@ export class Sandbox {
    */
   static async start(options: SandboxOptions = {}): Promise<Sandbox> {
     const version = options.version ?? DEFAULT_VERSION
+    const detached = options.detached ?? true
 
     // 1. Ensure binary is available
     const binaryPath = await ensureBinary(version)
@@ -118,8 +125,8 @@ export class Sandbox {
         `0.0.0.0:${networkPort}`,
       ],
       {
-        detached: true,
-        stdio: "ignore",
+        detached,
+        stdio: detached ? "ignore" : "pipe",
       },
     )
 
@@ -127,7 +134,9 @@ export class Sandbox {
       throw new Error("Failed to start sandbox: no PID")
     }
 
-    childProcess.unref()
+    if (detached) {
+      childProcess.unref()
+    }
     const rpcUrl = `http://127.0.0.1:${port}`
 
     // 6. Wait for RPC to be ready
