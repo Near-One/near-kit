@@ -210,7 +210,7 @@ describe("sendTransaction - RPC Response Validation", () => {
           .send()
 
         throw new Error("Expected transaction to fail")
-      } catch (error: unknown) {
+      } catch (err: unknown) {
         // Should be InvalidTransactionError, not FunctionCallError
         // because the failure is from createAccount, not the function call
         expect(err).toBeInstanceOf(Error)
