@@ -1,6 +1,8 @@
 # dependencies (bun install)
 node_modules
 node_modules/**
+.jj/
+
 
 # output
 out
