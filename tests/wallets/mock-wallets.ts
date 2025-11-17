@@ -7,7 +7,6 @@
  */
 
 import type {
-  Action,
   FinalExecutionOutcome,
   SignedMessage,
   WalletAccount,
@@ -16,7 +15,7 @@ import type {
 type TransactionParams = {
   signerId?: string
   receiverId: string
-  actions: Action[]
+  actions: unknown[]
 }
 
 type CallLogEntry =
@@ -47,7 +46,7 @@ export class MockWalletSelector {
   async signAndSendTransaction(params: {
     signerId?: string
     receiverId: string
-    actions: Action[]
+    actions: unknown[]
   }): Promise<FinalExecutionOutcome> {
     this.callLog.push({ method: "signAndSendTransaction", params })
 
@@ -173,7 +172,7 @@ class MockHotConnectWallet {
   async signAndSendTransaction(params: {
     signerId?: string
     receiverId: string
-    actions: Action[]
+    actions: unknown[]
   }): Promise<FinalExecutionOutcome> {
     this.callLog.push({ method: "signAndSendTransaction", params })
 
@@ -257,7 +256,7 @@ export class MockWalletWithoutSignMessage {
   async signAndSendTransaction(params: {
     signerId?: string
     receiverId: string
-    actions: Action[]
+    actions: unknown[]
   }): Promise<FinalExecutionOutcome> {
     // Return a mock successful outcome in RPC format
     return {

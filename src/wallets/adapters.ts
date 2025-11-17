@@ -13,10 +13,16 @@
  */
 
 import type {
+  Action,
   FinalExecutionOutcome,
   SignedMessage,
   WalletConnection,
 } from "../core/types.js"
+import type {
+  HotConnectAction,
+  HotConnectAddKeyPermission,
+  HotConnectConnector,
+} from "./types.js"
 
 // Wallet interface types based on @near-wallet-selector/core v10.x
 // These are duck-typed to match the actual wallet interface structure.
@@ -39,10 +45,6 @@ type WalletSelectorWallet = {
     state?: string
   }): Promise<unknown> // Many wallets type this as void | SignedMessage
 }
-
-// Temporarily use any types to bypass compatibility issues
-// TODO: Fix type compatibility between near-kit and @hot-labs/near-connect
-type HotConnectConnector = any
 
 /**
  * Adapter for @near-wallet-selector/core
@@ -148,44 +150,199 @@ export function fromWalletSelector(
  * })
  * ```
  */
+/**
+ * Adapter for @hot-labs/near-connect (HOT Connect)
+ *
+ * Converts a HOT Connect NearConnector instance to the WalletConnection interface.
+ *
+ * @param connector - NearConnector instance from HOT Connect
+ * @returns WalletConnection interface compatible with near-kit
+ *
+ * @example
+ * ```typescript
+ * import { Near } from 'near-kit'
+ * import { NearConnector } from '@hot-labs/near-connect'
+ * import { fromHotConnect } from 'near-kit/wallets'
+ *
+ * const connector = new NearConnector({ network: 'mainnet' })
+ *
+ * // Wait for user to connect their wallet
+ * connector.on('wallet:signIn', async () => {
+ *   const near = new Near({
+ *     network: 'mainnet',
+ *     wallet: fromHotConnect(connector)
+ *   })
+ *
+ *   // Use near-kit with the connected wallet
+ *   await near.call('contract.near', 'method', { arg: 'value' })
+ * })
+ * ```
+ */
 export function fromHotConnect(
   connector: HotConnectConnector,
 ): WalletConnection {
+  // Validate that we have a proper connector
+  if (!connector || typeof connector.wallet !== "function") {
+    throw new Error(
+      "Invalid HOT Connect instance. Make sure @hot-labs/near-connect is installed and you're passing a NearConnector instance.",
+    )
+  }
+
   return {
     async getAccounts() {
-      const wallet = await (connector as any).wallet()
+      const wallet = await connector.wallet()
       const accounts = await wallet.getAccounts()
-      // HOT Connect requires publicKey (not optional)
-      return accounts.map((acc: any) => ({
+
+      return accounts.map((acc) => ({
         accountId: acc.accountId,
         publicKey: acc.publicKey,
       }))
     },
 
-    async signAndSendTransaction(params) {
-      const wallet = await (connector as any).wallet()
+    async signAndSendTransaction(params): Promise<FinalExecutionOutcome> {
+      const wallet = await connector.wallet()
 
-      // Debug: log the actions to see their format
-      console.log('near-kit actions:', params.actions)
+      const convertAction = (action: Action): HotConnectAction => {
+        const a = action as Record<string, unknown>
 
-      // For now, pass actions through unchanged to see what happens
-      const hotConnectorActions = params.actions
+        if ("functionCall" in a && a["functionCall"]) {
+          const fc = a["functionCall"] as {
+            methodName: string
+            args: unknown
+            gas: bigint
+            deposit: bigint
+          }
 
-      return await wallet.signAndSendTransaction({
+          let args: unknown = fc.args
+          if (
+            Array.isArray(args) &&
+            args.every((x: unknown) => typeof x === "number")
+          ) {
+            try {
+              const argsString = new TextDecoder().decode(
+                new Uint8Array(args as number[]),
+              )
+              args = JSON.parse(argsString)
+            } catch {
+              // If parsing fails, keep args as raw bytes (may be binary data)
+            }
+          }
+
+          const argsObject: Record<string, unknown> =
+            args && typeof args === "object" && !Array.isArray(args)
+              ? (args as Record<string, unknown>)
+              : {}
+
+          return {
+            type: "FunctionCall",
+            params: {
+              methodName: fc.methodName,
+              args: argsObject,
+              gas: fc.gas.toString(),
+              deposit: fc.deposit.toString(),
+            },
+          }
+        }
+
+        if ("transfer" in a && a["transfer"]) {
+          const t = a["transfer"] as { deposit: bigint }
+          return {
+            type: "Transfer",
+            params: { deposit: t.deposit.toString() },
+          }
+        }
+
+        if ("stake" in a && a["stake"]) {
+          const s = a["stake"] as { stake: bigint; publicKey: unknown }
+          return {
+            type: "Stake",
+            params: {
+              stake: s.stake.toString(),
+              // HOT Connect expects a base58 string; we forward whatever representation
+              // we have and rely on upstream tooling when stake is used with wallets.
+              publicKey: String(s.publicKey),
+            },
+          }
+        }
+
+        if ("addKey" in a && a["addKey"]) {
+          const ak = a["addKey"] as {
+            publicKey: unknown
+            accessKey: { nonce: bigint; permission: unknown }
+          }
+          return {
+            type: "AddKey",
+            params: {
+              publicKey: String(ak.publicKey),
+              accessKey: {
+                nonce: Number(ak.accessKey.nonce),
+                permission: ak.accessKey
+                  .permission as HotConnectAddKeyPermission,
+              },
+            },
+          }
+        }
+
+        if ("deleteKey" in a && a["deleteKey"]) {
+          const dk = a["deleteKey"] as { publicKey: unknown }
+          return {
+            type: "DeleteKey",
+            params: {
+              publicKey: String(dk.publicKey),
+            },
+          }
+        }
+
+        if ("deleteAccount" in a && a["deleteAccount"]) {
+          const da = a["deleteAccount"] as { beneficiaryId: string }
+          return {
+            type: "DeleteAccount",
+            params: {
+              beneficiaryId: da.beneficiaryId,
+            },
+          }
+        }
+
+        if ("createAccount" in a && a["createAccount"] !== undefined) {
+          return {
+            type: "CreateAccount",
+          }
+        }
+
+        if ("deployContract" in a && a["deployContract"]) {
+          const dc = a["deployContract"] as { code: Uint8Array }
+          return {
+            type: "DeployContract",
+            params: {
+              code: dc.code,
+            },
+          }
+        }
+
+        throw new Error(
+          `Unsupported action type: ${Object.keys(a).join(", ") || "unknown"}`,
+        )
+      }
+
+      const hotConnectorActions = params.actions.map(convertAction)
+
+      const result = await wallet.signAndSendTransaction({
         ...(params.signerId !== undefined && { signerId: params.signerId }),
         receiverId: params.receiverId,
         actions: hotConnectorActions,
       })
+
+      return result as FinalExecutionOutcome
     },
 
-    async signMessage(params) {
+    async signMessage(params): Promise<SignedMessage> {
       const wallet = await connector.wallet()
-      // HOT Connect uses Uint8Array for nonce (matches our type)
-      return await wallet.signMessage({
+      const result = await wallet.signMessage({
         message: params.message,
         recipient: params.recipient,
         nonce: params.nonce,
       })
+      return result as SignedMessage
     },
   }
 }

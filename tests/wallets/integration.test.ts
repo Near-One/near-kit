@@ -165,7 +165,12 @@ describe("Near class with wallets", () => {
       expect(txCall).toBeDefined()
       if (txCall?.method === "signAndSendTransaction") {
         expect(txCall.params.receiverId).toBe("receiver.near")
-        expect(txCall.params.actions[0]).toHaveProperty("transfer")
+        const firstAction = txCall.params.actions[0] as {
+          type: string
+          params: { deposit: string }
+        }
+        expect(firstAction.type).toBe("Transfer")
+        expect(firstAction.params.deposit).toBe("2000000000000000000000000")
       }
     })
   })

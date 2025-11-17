@@ -56,8 +56,15 @@ describe("Wallet Adapter Data Flow Verification", () => {
       expect(txCall?.params.actions[1]).toBe(callAction)
 
       // Verify structure is preserved
-      const action0 = txCall?.params.actions[0]
-      const action1 = txCall?.params.actions[1]
+      const action0 = txCall?.params.actions[0] as {
+        transfer: { deposit: bigint }
+      }
+      const action1 = txCall?.params.actions[1] as {
+        functionCall: {
+          methodName: string
+          args: Uint8Array
+        }
+      }
 
       expect(action0).toHaveProperty("transfer")
       if (action0 && "transfer" in action0) {
@@ -152,7 +159,7 @@ describe("Wallet Adapter Data Flow Verification", () => {
   })
 
   describe("fromHotConnect - Parameter Passing", () => {
-    it("should pass Actions unchanged to wallet.signAndSendTransaction", async () => {
+    it("should translate Actions for HOT Connect signAndSendTransaction", async () => {
       const mockConnector = new MockHotConnect([
         { accountId: "alice.near", publicKey: "ed25519:abc123" },
       ])
@@ -176,24 +183,23 @@ describe("Wallet Adapter Data Flow Verification", () => {
       const txCall = calls.find((c) => c.method === "signAndSendTransaction")
 
       expect(txCall).toBeDefined()
-      expect(txCall?.params.actions).toHaveLength(2)
+      const actionsPassed = txCall?.params.actions
+      expect(actionsPassed).toHaveLength(2)
 
-      // Verify the actions are EXACTLY what we passed (reference equality)
-      expect(txCall?.params.actions[0]).toBe(transferAction)
-      expect(txCall?.params.actions[1]).toBe(deleteAction)
-
-      // Verify structure
-      const action0 = txCall?.params.actions[0]
-      const action1 = txCall?.params.actions[1]
-
-      if (action0 && "transfer" in action0) {
-        expect(action0.transfer.deposit).toBe(
-          BigInt("5000000000000000000000000"),
-        )
+      const action0 = actionsPassed?.[0] as {
+        type: string
+        params: { deposit: string }
       }
-      if (action1 && "deleteAccount" in action1) {
-        expect(action1.deleteAccount.beneficiaryId).toBe("beneficiary.near")
+      const action1 = actionsPassed?.[1] as {
+        type: string
+        params: { beneficiaryId: string }
       }
+
+      expect(action0.type).toBe("Transfer")
+      expect(action0.params.deposit).toBe("5000000000000000000000000")
+
+      expect(action1.type).toBe("DeleteAccount")
+      expect(action1.params.beneficiaryId).toBe("beneficiary.near")
     })
 
     it("should pass Uint8Array nonce unchanged for signMessage", async () => {
@@ -256,25 +262,24 @@ describe("Wallet Adapter Data Flow Verification", () => {
 
       expect(txCall?.params.actions).toHaveLength(3)
 
-      // Verify each action type is preserved
-      const action0 = txCall?.params.actions[0]
-      const action1 = txCall?.params.actions[1]
-      const action2 = txCall?.params.actions[2]
+      const [a0, a1, a2] = txCall?.params.actions as Array<{
+        type: string
+        params: Record<string, unknown>
+      }>
 
-      expect(action0).toHaveProperty("createAccount")
-      if (action0 && "createAccount" in action0) {
-        expect(action0.createAccount).toEqual({})
-      }
+      expect(a0).toBeDefined()
+      if (!a0) return
+      expect(a0.type).toBe("CreateAccount")
 
-      expect(action1).toHaveProperty("transfer")
-      if (action1 && "transfer" in action1) {
-        expect(action1.transfer.deposit).toBe(BigInt(1000))
-      }
+      expect(a1).toBeDefined()
+      if (!a1) return
+      expect(a1.type).toBe("Transfer")
+      expect(a1.params["deposit"]).toBe("1000")
 
-      expect(action2).toHaveProperty("deleteAccount")
-      if (action2 && "deleteAccount" in action2) {
-        expect(action2.deleteAccount.beneficiaryId).toBe("beneficiary.near")
-      }
+      expect(a2).toBeDefined()
+      if (!a2) return
+      expect(a2.type).toBe("DeleteAccount")
+      expect(a2.params["beneficiaryId"]).toBe("beneficiary.near")
     })
   })
 
@@ -300,7 +305,14 @@ describe("Wallet Adapter Data Flow Verification", () => {
 
       const calls = mockWallet.getCallLog()
       const txCall = calls.find((c) => c.method === "signAndSendTransaction")
-      const passedAction = txCall?.params.actions[0]
+      const passedAction = txCall?.params.actions[0] as {
+        functionCall: {
+          methodName: string
+          args: Uint8Array
+          gas: bigint
+          deposit: bigint
+        }
+      }
 
       // Verify ALL fields are present and correct
       expect(passedAction).toBeDefined()
@@ -331,14 +343,14 @@ describe("Wallet Adapter Data Flow Verification", () => {
 
       const calls = mockWallet.getCallLog()
       const txCall = calls.find((c) => c.method === "signAndSendTransaction")
-      const passedAction = txCall?.params.actions[0]
+      const passedAction = txCall?.params.actions[0] as {
+        transfer: { deposit: bigint }
+      }
 
       // Verify bigint is preserved exactly
       expect(passedAction).toBeDefined()
-      if (passedAction && "transfer" in passedAction) {
-        expect(passedAction.transfer.deposit).toBe(largeAmount)
-        expect(typeof passedAction.transfer.deposit).toBe("bigint")
-      }
+      expect(passedAction.transfer.deposit).toBe(largeAmount)
+      expect(typeof passedAction.transfer.deposit).toBe("bigint")
     })
   })
 
