@@ -1,4 +1,7 @@
 # near-kit
+[![npm version](https://img.shields.io/npm/v/near-kit.svg)](https://www.npmjs.com/package/near-kit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 
 A simple, intuitive TypeScript library for interacting with NEAR Protocol. Designed to feel like a modern fetch library - easy for beginners, powerful for advanced users.
 
@@ -6,9 +9,9 @@ A simple, intuitive TypeScript library for interacting with NEAR Protocol. Desig
 
 - **Simple things should be simple** - One-line commands for common operations
 - **Type safety everywhere** - Full TypeScript support with IDE autocomplete
-- **Human-readable** - No yoctoNEAR confusion, use "10 NEAR" not "10000000000000000000000000"
 - **Progressive complexity** - Basic API for simple needs, advanced features when required
-- **Fetch-like** - Familiar patterns for JavaScript developers
+- **Powerful transaction builder** - Fluent, human-readable API for transactions
+- **Wallet-ready** - Full support for [HOT Connector](https://github.com/azbang/hot-connector) and [NEAR Wallet Selector](https://github.com/near/wallet-selector), drop-in integration
 
 ## Installation
 
@@ -23,13 +26,25 @@ bun install near-kit
 ```typescript
 import { Near } from 'near-kit';
 
-// Initialize client (defaults to mainnet)
-const near = new Near({ network: 'testnet' });
+// Initialize with a private key for signing transactions
+const near = new Near({
+  network: 'testnet',
+  privateKey: 'ed25519:...',  // Your account's private key
+  defaultSignerId: 'alice.testnet'  // Default account for signing
+});
 
 // View a contract method (read-only, no gas)
 const balance = await near.view('example.testnet', 'get_balance', {
   account_id: 'alice.testnet'
 });
+
+// Call a contract method (requires signature, costs gas)
+await near.call('example.testnet', 'increment', {}, {
+  attachedDeposit: '0.1'  // Attach 0.1 NEAR
+});
+
+// Send NEAR tokens
+await near.send('bob.testnet', '5');  // Send 5 NEAR to Bob
 
 // Check account balance
 const accountBalance = await near.getBalance('alice.testnet');
@@ -77,16 +92,19 @@ const status = await near.getStatus();
 ### Type-Safe Contracts
 
 ```typescript
-// Define contract interface
-interface MyContract {
+import type { Contract } from 'near-kit';
+
+// Define contract interface using Contract<> helper
+type MyContract = Contract<{
   view: {
-    get_balance(args: { account_id: string }): Promise<string>;
-    get_info(): Promise<{ name: string; version: string }>;
-  };
+    get_balance: (args: { account_id: string }) => Promise<string>
+    get_info: () => Promise<{ name: string; version: string }>
+  }
   call: {
-    transfer(args: { to: string; amount: string }): Promise<void>;
-  };
-}
+    // Just define args - options parameter automatically added!
+    transfer: (args: { to: string; amount: string }) => Promise<void>
+  }
+}>
 
 // Create type-safe contract
 const contract = near.contract<MyContract>('example.near');
@@ -94,6 +112,12 @@ const contract = near.contract<MyContract>('example.near');
 // Fully typed method calls
 const balance = await contract.view.get_balance({ account_id: 'alice.near' });
 const info = await contract.view.get_info();
+
+// Call methods automatically get options parameter
+await contract.call.transfer(
+  { to: 'bob.near', amount: '10' },
+  { attachedDeposit: '1 NEAR' }
+);
 ```
 
 ### Transaction Builder
@@ -138,8 +162,6 @@ beforeAll(async () => { sandbox = await Sandbox.start(); });
 afterAll(async () => { await sandbox.stop(); });
 ```
 
-> **Note:** Requires file descriptor limit ≥65,535 (`ulimit -n`). See [setup instructions](./src/sandbox/README.md).
-
 ## Key Management
 
 ```typescript
@@ -158,31 +180,63 @@ const near = new Near({
 });
 ```
 
-## Utilities
+## Wallet Integration
+
+near-kit works seamlessly with popular NEAR wallets - just pass the wallet adapter and all methods will use the wallet for signing.
+
+### NEAR Wallet Selector
 
 ```typescript
-import {
-  parseNearAmount,
-  formatNearAmount,
-  parseGas,
-  formatGas,
-  generateKey,
-  isValidAccountId,
-} from 'near-kit';
+import { Near, fromWalletSelector } from 'near-kit';
+import { setupWalletSelector } from '@near-wallet-selector/core';
+import { setupMyNearWallet } from '@near-wallet-selector/my-near-wallet';
+import { setupHereWallet } from '@near-wallet-selector/here-wallet';
 
-// Unit conversion
-const yocto = parseNearAmount('10 NEAR'); // "10000000000000000000000000"
-const near = formatNearAmount(yocto); // "10.00 NEAR"
+// Setup wallet selector
+const selector = await setupWalletSelector({
+  network: 'testnet',
+  modules: [
+    setupMyNearWallet(),
+    setupHereWallet(),
+  ],
+});
 
-// Gas utilities
-const gas = parseGas('30 Tgas'); // "30000000000000"
-const tgas = formatGas(gas); // "30.00 Tgas"
+// Get wallet instance (after user connects)
+const wallet = await selector.wallet();
 
-// Key generation
-const keyPair = generateKey();
+// Use with near-kit
+const near = new Near({
+  network: 'testnet',
+  wallet: fromWalletSelector(wallet),
+});
 
-// Validation
-const valid = isValidAccountId('alice.near'); // true
+// All operations now use the wallet for signing
+await near.call('contract.near', 'method', { arg: 'value' });
+await near.send('bob.near', '10');
+```
+
+### HOT Connector
+
+```typescript
+import { Near, fromHotConnect } from 'near-kit';
+import { NearConnector } from '@hot-labs/near-connect';
+
+// Create connector
+const connector = new NearConnector({ network: 'testnet' });
+
+// Wait for user to connect
+connector.on('wallet:signIn', async () => {
+  const near = new Near({
+    network: 'testnet',
+    wallet: fromHotConnect(connector),
+  });
+
+  // Use near-kit with the connected wallet
+  await near.call('contract.near', 'method', { arg: 'value' });
+});
+
+// Trigger wallet connection
+await connector.signIn();
 ```
 
 ## Error Handling
@@ -203,6 +257,97 @@ try {
     console.log(`Contract error: ${error.panic}`);
   } else if (error instanceof NetworkError) {
     // Retry logic
+  }
+}
+```
+
+## Advanced Features
+
+### Batch Actions (Multi-Action Transactions)
+
+Deploy and initialize a contract in a single transaction:
+
+```typescript
+const contractWasm = await fs.readFile('./contract.wasm');
+
+await near.transaction('alice.near')
+  .createAccount('contract.alice.near')
+  .transfer('contract.alice.near', '10 NEAR')
+  .deployContract('contract.alice.near', contractWasm)
+  .functionCall('contract.alice.near', 'init', { owner: 'alice.near' })
+  .send();
+```
+
+### NEP-413 Message Signing
+
+Authenticate users without gas fees:
+
+```typescript
+const signedMessage = await near.signMessage({
+  message: 'Login to MyApp',
+  recipient: 'myapp.near',
+  nonce: crypto.getRandomValues(new Uint8Array(32))
+});
+
+// Send to backend for verification
+await fetch('/api/auth', {
+  method: 'POST',
+  body: JSON.stringify(signedMessage)
+});
+```
+
+### Delegate Actions (NEP-366)
+
+Enable meta-transactions and sponsored transactions where a relayer pays the gas:
+
+```typescript
+// User creates and signs a delegate action (no gas cost to user)
+const userNear = new Near({
+  network: 'testnet',
+  privateKey: 'ed25519:...'  // User's key
+});
+
+const signedDelegateAction = await userNear
+  .transaction('user.near')
+  .transfer('recipient.near', '1 NEAR')
+  .delegate({ blockHeightOffset: 100 });
+
+// Relayer submits the transaction (pays the gas)
+const relayerNear = new Near({
+  network: 'testnet',
+  privateKey: 'ed25519:...'  // Relayer's key
+});
+
+await relayerNear
+  .transaction('relayer.near')
+  .signedDelegateAction(signedDelegateAction)
+  .send();
+```
+
+### Automatic Nonce Management
+
+No more nonce conflicts - the library handles nonce tracking and retries automatically:
+
+```typescript
+// Safe to run multiple transactions concurrently
+await Promise.all([
+  near.send('bob.near', '1'),
+  near.send('charlie.near', '1'),
+  near.send('dave.near', '1')
+]);
+// Nonces are automatically managed and conflicts are retried
+```
+
+### Smart Retry Logic
+
+Automatic retries for network errors with exponential backoff:
+
+```typescript
+try {
+  await near.call('contract.near', 'method', {});
+} catch (error) {
+  if (error instanceof TimeoutError && error.retryable) {
+    // Already retried automatically
   }
 }
 ```
