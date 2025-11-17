@@ -1,5 +1,9 @@
 /**
  * Mock wallet implementations for testing
+ *
+ * These mocks are structurally compatible with wallet-selector and HOT Connect
+ * wallet interfaces. We use type assertions to bridge the nominal vs structural
+ * typing gap.
  */
 
 import type {
@@ -145,16 +149,23 @@ export class MockHotConnect {
 
 /**
  * Mock wallet instance returned by HOT Connect
+ * HOT Connect requires publicKey to always be present
  */
 class MockHotConnectWallet {
-  private accounts: WalletAccount[]
+  private accounts: Array<{ accountId: string; publicKey: string }>
   private callLog: CallLogEntry[] = []
 
   constructor(accounts: WalletAccount[] = []) {
-    this.accounts = accounts
+    // HOT Connect requires publicKey - ensure all accounts have it
+    this.accounts = accounts.map((acc) => ({
+      accountId: acc.accountId,
+      publicKey: acc.publicKey || "ed25519:default",
+    }))
   }
 
-  async getAccounts(): Promise<WalletAccount[]> {
+  async getAccounts(): Promise<
+    Array<{ accountId: string; publicKey: string }>
+  > {
     this.callLog.push({ method: "getAccounts", params: {} })
     return this.accounts
   }
@@ -221,7 +232,11 @@ class MockHotConnectWallet {
   }
 
   setAccounts(accounts: WalletAccount[]) {
-    this.accounts = accounts
+    // HOT Connect requires publicKey - ensure all accounts have it
+    this.accounts = accounts.map((acc) => ({
+      accountId: acc.accountId,
+      publicKey: acc.publicKey || "ed25519:default",
+    }))
   }
 }
 
