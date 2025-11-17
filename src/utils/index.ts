@@ -1,7 +1,11 @@
 /**
- * Utility functions for the NEAR client library
+ * Utility functions for the NEAR client library.
+ *
+ * @remarks
+ * This module exposes helpers for working with human-readable amounts and gas,
+ * key generation and parsing, NEP-413 message signing, and validation of
+ * common NEAR types (account IDs, public/private keys, amounts, gas).
  */
-
 export {
   Amount,
   type AmountInput,

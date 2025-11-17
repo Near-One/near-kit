@@ -1,12 +1,11 @@
 /**
- * In-memory key store implementation
+ * In-memory key store implementation.
  */
-
 import type { KeyPair, KeyStore } from "../core/types.js"
 import { parseKey } from "../utils/key.js"
 
 /**
- * In-memory key store
+ * In-memory key store.
  *
  * Keys are stored in memory and lost when the process exits.
  * Useful for testing, development, and temporary key storage.
@@ -27,7 +26,7 @@ export class InMemoryKeyStore implements KeyStore {
   private keys: Map<string, KeyPair>
 
   /**
-   * Create a new in-memory keystore
+   * Create a new in-memory keystore.
    *
    * @param initialKeys - Optional initial keys to populate the store
    *

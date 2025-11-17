@@ -1,7 +1,6 @@
 /**
- * File-based key store implementation compatible with NEAR CLI
+ * File-based key store implementation compatible with NEAR CLI.
  */
-
 import type { KeyPair, KeyStore } from "../core/types.js"
 import { parseKey } from "../utils/key.js"
 import {
@@ -11,7 +10,7 @@ import {
 } from "./credential-schemas.js"
 
 /**
- * File-based key store compatible with NEAR CLI format
+ * File-based key store compatible with NEAR CLI format.
  *
  * This keystore is fully compatible with the NEAR CLI credential format,
  * storing keys in `~/.near-credentials/` with network subdirectories.
@@ -53,10 +52,10 @@ export class FileKeyStore implements KeyStore {
   private readonly network: Network | undefined
 
   /**
-   * Create a new file-based keystore
+   * Create a new file-based keystore.
    *
-   * @param basePath - Base directory path (default: "~/.near-credentials")
-   * @param network - Network subdirectory (e.g., "testnet", "mainnet")
+   * @param basePath - Base directory path (default: `"~/.near-credentials"`).
+   * @param network - Network subdirectory (e.g., `"testnet"`, `"mainnet"`).
    *
    * @example
    * ```typescript
@@ -77,24 +76,27 @@ export class FileKeyStore implements KeyStore {
   }
 
   /**
-   * Get the directory path for storing keys
-   * Includes network subdirectory if specified
+   * Get the directory path for storing keys.
+   * Includes network subdirectory if specified.
+   * @internal
    */
   private getNetworkPath(): string {
     return this.network ? `${this.basePath}/${this.network}` : this.basePath
   }
 
   /**
-   * Get the file path for a specific account
-   * Uses simple format: {network}/{accountId}.json
+   * Get the file path for a specific account.
+   * Uses simple format: `{network}/{accountId}.json`.
+   * @internal
    */
   private getKeyFilePath(accountId: string): string {
     return `${this.getNetworkPath()}/${accountId}.json`
   }
 
   /**
-   * Get the multi-key directory path for an account
-   * Format: {network}/{accountId}/
+   * Get the multi-key directory path for an account.
+   * Format: `{network}/{accountId}/`.
+   * @internal
    */
   private getMultiKeyDirPath(accountId: string): string {
     return `${this.getNetworkPath()}/${accountId}`
@@ -184,8 +186,9 @@ export class FileKeyStore implements KeyStore {
   }
 
   /**
-   * Try to read from multi-key directory format
-   * Format: {network}/{accountId}/ed25519_PublicKey.json
+   * Try to read from multi-key directory format.
+   * Format: `{network}/{accountId}/ed25519_*.json`.
+   * @internal
    */
   private async getFromMultiKeyDir(accountId: string): Promise<KeyPair | null> {
     try {

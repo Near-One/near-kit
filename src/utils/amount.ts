@@ -1,20 +1,20 @@
 /**
- * Amount utilities for NEAR tokens
+ * Amount utilities for NEAR tokens.
  *
  * All amounts must specify units explicitly:
- * - Amount.NEAR(10) → "10 NEAR"
- * - Amount.yocto(1000n) → "1000 yocto"
- * - "10 NEAR" (string literal)
- * - "1000 yocto" (string literal)
- * - 1000n (bigint literal, treated as yoctoNEAR)
+ * - `Amount.NEAR(10)` → `"10 NEAR"`
+ * - `Amount.yocto(1000n)` → `"1000 yocto"`
+ * - `"10 NEAR"` (string literal)
+ * - `"1000 yocto"` (string literal)
+ * - `1000n` (bigint literal, treated as yoctoNEAR)
  *
- * No bare numbers accepted - prevents accidental unit confusion.
+ * No bare numbers are accepted in order to prevent accidental unit confusion.
  */
 
 import { YOCTO_PER_NEAR } from "../core/constants.js"
 
 /**
- * Amount input type - must be a string with unit specification or bigint
+ * Amount input type - must be a string with unit specification or bigint.
  *
  * Accepts:
  * - Literal strings: "10 NEAR", "10.5 NEAR", "1000 yocto"
@@ -35,7 +35,7 @@ export type AmountInput =
   | bigint
 
 /**
- * Amount namespace - explicit constructors for NEAR values
+ * Amount namespace - explicit constructors for NEAR values.
  *
  * @example
  * Amount.NEAR(10)           // "10 NEAR"
@@ -46,25 +46,25 @@ export type AmountInput =
  */
 export const Amount = {
   /**
-   * Create a NEAR amount
-   * @param value - Amount in NEAR
-   * @returns Formatted string "X NEAR"
+   * Create a NEAR amount.
+   * @param value - Amount in NEAR.
+   * @returns Formatted string `"X NEAR"`.
    */
   NEAR(value: number | string): string {
     return `${value} NEAR`
   },
 
   /**
-   * Create a yoctoNEAR amount (10^-24 NEAR)
-   * @param value - Amount in yoctoNEAR
-   * @returns Formatted string "X yocto"
+   * Create a yoctoNEAR amount (10^-24 NEAR).
+   * @param value - Amount in yoctoNEAR.
+   * @returns Formatted string `"X yocto"`.
    */
   yocto(value: bigint | string): string {
     return `${value} yocto`
   },
 
   /**
-   * Common amount constants
+   * Common amount constants.
    */
   ZERO: "0 yocto",
   ONE_NEAR: "1 NEAR",
@@ -72,10 +72,11 @@ export const Amount = {
 } as const
 
 /**
- * Parse amount to yoctoNEAR
- * @param amount - Amount with unit (e.g., "10 NEAR", "1000 yocto") or bigint (treated as yoctoNEAR)
- * @returns Amount in yoctoNEAR as string
- * @throws Error if format is invalid
+ * Parse amount to yoctoNEAR.
+ *
+ * @param amount - Amount with unit (e.g., `"10 NEAR"`, `"1000 yocto"`) or bigint (treated as yoctoNEAR).
+ * @returns Amount in yoctoNEAR as a string.
+ * @throws Error If the format is invalid or ambiguous (e.g. bare numbers).
  */
 export function parseAmount(amount: AmountInput): string {
   // Handle bigint directly (treated as yoctoNEAR)

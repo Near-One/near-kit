@@ -1,7 +1,11 @@
 /**
- * Key management module
+ * Key management module.
+ *
+ * @remarks
+ * Includes {@link InMemoryKeyStore} for ephemeral keys, {@link FileKeyStore}
+ * for NEAR-CLI compatible disk storage, and credential schemas for working
+ * with existing NEAR tooling.
  */
-
 export * from "./credential-schemas.js"
 export * from "./file-keystore.js"
 export * from "./in-memory-keystore.js"

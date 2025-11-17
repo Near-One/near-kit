@@ -1,7 +1,3 @@
-/**
- * Key generation and management utilities
- */
-
 import { ed25519 } from "@noble/curves/ed25519.js"
 import { secp256k1 } from "@noble/curves/secp256k1.js"
 import { base58, base64 } from "@scure/base"
@@ -21,7 +17,11 @@ import { InvalidKeyError } from "../errors/index.js"
 import { serializeNep413Message } from "./nep413.js"
 
 /**
- * Ed25519 key pair implementation
+ * Ed25519 key pair implementation.
+ *
+ * @remarks
+ * Implements the {@link KeyPair} interface used throughout the library and
+ * provides NEP-413 message signing via {@link Ed25519KeyPair.signNep413Message}.
  */
 export class Ed25519KeyPair implements KeyPair {
   publicKey: PublicKey
@@ -111,7 +111,7 @@ export class Ed25519KeyPair implements KeyPair {
 }
 
 /**
- * Secp256k1 key pair implementation
+ * Secp256k1 key pair implementation.
  *
  * NEAR expects secp256k1 public keys to be 64 bytes (uncompressed without 0x04 header).
  * The secp256k1 library returns 65-byte uncompressed keys (with 0x04 header), so we
@@ -221,17 +221,18 @@ export class Secp256k1KeyPair implements KeyPair {
 }
 
 /**
- * Generate a new random Ed25519 key pair
- * @returns A new KeyPair instance
+ * Generate a new random Ed25519 key pair.
+ * @returns A new {@link KeyPair} instance.
  */
 export function generateKey(): KeyPair {
   return Ed25519KeyPair.fromRandom()
 }
 
 /**
- * Parse a key string to a KeyPair
- * @param keyString - Key string (e.g., "ed25519:..." or "secp256k1:...")
- * @returns KeyPair instance
+ * Parse a key string to a {@link KeyPair}.
+ *
+ * @param keyString - Key string (e.g. `"ed25519:..."` or `"secp256k1:..."`).
+ * @returns A concrete {@link Ed25519KeyPair} or {@link Secp256k1KeyPair}.
  */
 export function parseKey(keyString: string): KeyPair {
   if (keyString.startsWith(ED25519_KEY_PREFIX)) {
@@ -246,9 +247,10 @@ export function parseKey(keyString: string): KeyPair {
 }
 
 /**
- * Parse a public key string to a PublicKey object
- * @param publicKeyString - Public key string (e.g., "ed25519:..." or "secp256k1:...")
- * @returns PublicKey instance
+ * Parse a public key string to a {@link PublicKey} object.
+ *
+ * @param publicKeyString - Public key string (e.g. `"ed25519:..."` or `"secp256k1:..."`).
+ * @returns {@link PublicKey} instance.
  */
 export function parsePublicKey(publicKeyString: string): PublicKey {
   if (publicKeyString.startsWith(ED25519_KEY_PREFIX)) {
