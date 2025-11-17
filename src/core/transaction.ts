@@ -312,6 +312,12 @@ export class TransactionBuilder {
     const amountYocto = normalizeAmount(amount)
     const pk = parsePublicKey(publicKey)
     this.actions.push(actions.stake(BigInt(amountYocto), pk))
+
+    // The account being staked is the receiver of the transaction
+    if (!this.receiverId) {
+      this.receiverId = this.signerId
+    }
+
     return this.invalidateCache()
   }
 

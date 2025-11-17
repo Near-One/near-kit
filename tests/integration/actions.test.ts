@@ -10,8 +10,8 @@
  * - delegate actions (meta-transactions)
  */
 
-import { readFileSync } from "node:fs"
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+import { readFileSync } from "node:fs"
 import { Near } from "../../src/core/near.js"
 import { Sandbox } from "../../src/sandbox/sandbox.js"
 import { generateKey } from "../../src/utils/key.js"
@@ -46,7 +46,9 @@ describe("Transaction Actions - Integration Tests", () => {
       const accountKey = generateKey()
       const accountId = `deleteme-${Date.now()}.${sandbox.rootAccount.id}`
       const beneficiaryKey = generateKey()
-      const beneficiaryId = `beneficiary-${Date.now()}.${sandbox.rootAccount.id}`
+      const beneficiaryId = `beneficiary-${Date.now()}.${
+        sandbox.rootAccount.id
+      }`
 
       // Create the account to be deleted
       await near
@@ -101,7 +103,7 @@ describe("Transaction Actions - Integration Tests", () => {
       expect(balanceAfterNum).toBeGreaterThanOrEqual(balanceBeforeNum)
 
       console.log(
-        `✓ Beneficiary balance after deletion: ${balanceBefore} → ${balanceAfter} NEAR`,
+        `✓ Beneficiary balance after deletion: ${balanceBefore} → ${balanceAfter} NEAR`
       )
     }, 30000)
 
@@ -144,19 +146,11 @@ describe("Transaction Actions - Integration Tests", () => {
         },
       })
 
-      // Attempt to stake (may fail if validator infrastructure not available)
-      // But this exercises the stake action code path
-      try {
-        await nearWithValidatorKey
-          .transaction(validatorId)
-          .stake(validatorKey.publicKey.toString(), "50 NEAR")
-          .send()
-        console.log(`✓ Stake transaction sent successfully`)
-      } catch (error) {
-        // Expected in sandbox without full validator setup
-        console.log(`✓ Stake action exercised`)
-        console.log(`   Error (expected): ${error}`)
-      }
+      await nearWithValidatorKey
+        .transaction(validatorId)
+        .stake(validatorKey.publicKey.toString(), "50 NEAR")
+        .send()
+      console.log(`✓ Stake transaction sent successfully`)
     }, 30000)
   })
 
@@ -214,7 +208,7 @@ describe("Transaction Actions - Integration Tests", () => {
 
       const balanceAfter = await near.getBalance(sandbox.rootAccount.id)
       expect(Number.parseFloat(balanceAfter)).toBeGreaterThan(
-        Number.parseFloat(balanceBefore),
+        Number.parseFloat(balanceBefore)
       )
 
       console.log(`✓ Second key successfully used for transaction`)
@@ -255,7 +249,7 @@ describe("Transaction Actions - Integration Tests", () => {
         .send()
 
       console.log(
-        `✓ Function call key added: ${functionKey.publicKey.toString()}`,
+        `✓ Function call key added: ${functionKey.publicKey.toString()}`
       )
     }, 30000)
 
@@ -361,12 +355,14 @@ describe("Transaction Actions - Integration Tests", () => {
         expect(messages).toBeDefined()
         expect(Array.isArray(messages)).toBe(true)
         console.log(
-          `✓ Contract is callable - get_messages returned ${(messages as unknown[]).length} messages`,
+          `✓ Contract is callable - get_messages returned ${
+            (messages as unknown[]).length
+          } messages`
         )
       } catch (error) {
         // Contract deployed but not yet available for calling
         console.log(
-          `✓ Contract deployed (code may not be immediately available in sandbox)`,
+          `✓ Contract deployed (code may not be immediately available in sandbox)`
         )
       }
     }, 30000)
@@ -543,7 +539,9 @@ describe("Transaction Actions - Integration Tests", () => {
 
       // Create recipient for the delegated transfer
       const recipientKey = generateKey()
-      const recipientId = `delegate-rcpt-${Date.now()}.${sandbox.rootAccount.id}`
+      const recipientId = `delegate-rcpt-${Date.now()}.${
+        sandbox.rootAccount.id
+      }`
 
       await near
         .transaction(sandbox.rootAccount.id)
@@ -555,7 +553,7 @@ describe("Transaction Actions - Integration Tests", () => {
         .send()
 
       console.log(
-        `✓ Created accounts: sender=${senderId}, relayer=${relayerId}, recipient=${recipientId}`,
+        `✓ Created accounts: sender=${senderId}, relayer=${relayerId}, recipient=${recipientId}`
       )
 
       // Get sender's nonce and current block height
@@ -570,7 +568,7 @@ describe("Transaction Actions - Integration Tests", () => {
       const senderPublicKey = parsedSenderKey.publicKey
       const accessKey = await nearWithSenderKey.rpc.getAccessKey(
         senderId,
-        senderKey.publicKey.toString(),
+        senderKey.publicKey.toString()
       )
       const status = await near.getStatus()
 
@@ -585,7 +583,7 @@ describe("Transaction Actions - Integration Tests", () => {
         ],
         BigInt(accessKey.nonce) + BigInt(1),
         BigInt(status.latestBlockHeight + 100),
-        senderPublicKey,
+        senderPublicKey
       )
 
       console.log(`✓ Created delegate action`)
@@ -616,18 +614,18 @@ describe("Transaction Actions - Integration Tests", () => {
       // @ts-expect-error - accessing private field for testing
       builder.actions.push(signedDelegateAction)
 
-      await builder.send()
+      await builder.send({ waitUntil: "EXECUTED" })
 
       console.log(`✓ Relayer submitted delegate action`)
 
       // Verify the transfer happened
       const recipientBalanceAfter = await near.getBalance(recipientId)
       expect(Number.parseFloat(recipientBalanceAfter)).toBeGreaterThan(
-        Number.parseFloat(recipientBalanceBefore),
+        Number.parseFloat(recipientBalanceBefore)
       )
 
       console.log(
-        `✓ Delegate action executed: ${recipientBalanceBefore} → ${recipientBalanceAfter} NEAR`,
+        `✓ Delegate action executed: ${recipientBalanceBefore} → ${recipientBalanceAfter} NEAR`
       )
     }, 30000)
   })
