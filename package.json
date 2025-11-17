@@ -10,6 +10,18 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./sandbox": {
+      "import": "./dist/sandbox/index.js",
+      "types": "./dist/sandbox/index.d.ts"
+    },
+    "./keys/file": {
+      "import": "./dist/keys/file-keystore.js",
+      "types": "./dist/keys/file-keystore.d.ts"
+    },
+    "./keys/native": {
+      "import": "./dist/keys/native-keystore.js",
+      "types": "./dist/keys/native-keystore.d.ts"
     }
   },
   "files": [

@@ -59,14 +59,15 @@ export type {
 } from "./keys/index.js"
 // Key stores
 export {
-  FileKeyStore,
   InMemoryKeyStore,
-  // NativeKeyStore is not exported by default (requires native Node.js modules)
-  // For Node.js/Bun: import { NativeKeyStore } from "near-kit/dist/keys/native-keystore.js"
+  // Node.js-only keystores not exported by default (browser environments don't support them)
+  // For Node.js/Bun:
+  //   import { FileKeyStore } from "near-kit/keys/file"
+  //   import { NativeKeyStore } from "near-kit/keys/native"
 } from "./keys/index.js"
+// Sandbox is not exported by default (requires Node.js)
+// For Node.js/Bun: import { Sandbox } from "near-kit/sandbox"
 export type { SandboxOptions } from "./sandbox/index.js"
-// Sandbox
-export { Sandbox } from "./sandbox/index.js"
 // Utilities
 export {
   Amount,

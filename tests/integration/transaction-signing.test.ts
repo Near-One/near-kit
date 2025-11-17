@@ -10,7 +10,8 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import { InMemoryKeyStore, Near, Sandbox } from "../../src/index.js"
+import { InMemoryKeyStore, Near } from "../../src/index.js"
+import { Sandbox } from "../../src/sandbox/index.js"
 import { Amount } from "../../src/utils/amount.js"
 import { generateKey, parseKey } from "../../src/utils/key.js"
 import type { PrivateKey } from "../../src/utils/validation.js"
