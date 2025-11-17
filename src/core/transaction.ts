@@ -216,6 +216,12 @@ export class TransactionBuilder {
    */
   deleteAccount(beneficiaryId: string): this {
     this.actions.push(actions.deleteAccount(beneficiaryId))
+
+    // The account being deleted is the receiver of the transaction
+    if (!this.receiverId) {
+      this.receiverId = this.signerId
+    }
+
     return this.invalidateCache()
   }
 
