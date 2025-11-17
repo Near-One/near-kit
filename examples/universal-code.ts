@@ -1,190 +1,150 @@
 /**
- * Example: Universal Code - Same API for Server and Browser
+ * Universal Code Pattern
  *
- * This example demonstrates how to write code once that works:
- * - Server-side with private keys
- * - Browser with wallet-selector
- * - Browser with HOT Connect
- *
- * The key insight: near-ts provides a unified API that abstracts
- * away the signing mechanism. Your transaction logic stays the same!
+ * Write once, run anywhere: same API works in server-side (Node.js) and
+ * browser (wallet) environments. The signing method is abstracted away.
  */
 
-import { Near, type WalletConnection } from "../src/index.js"
+import {
+  fromHotConnect,
+  fromWalletSelector,
+  Near,
+  type PrivateKey,
+  type WalletConnection,
+} from "../src/index.js"
 
-// Type definitions for external wallet libraries (not included as dependencies)
-type WalletSelectorWallet = {
-  getAccounts(): Promise<Array<{ accountId: string; publicKey: string }>>
-  signAndSendTransaction(params: {
-    receiverId: string
-    actions: unknown[]
-  }): Promise<unknown>
-}
+// External wallet types
+// biome-ignore lint/suspicious/noExplicitAny: External library type
+type HotConnector = { wallet(): Promise<any> }
+// biome-ignore lint/suspicious/noExplicitAny: External library type
+type WalletSelectorWallet = any
 
-type HotConnectConnector = {
-  wallet(): Promise<{
-    getAccounts(): Promise<Array<{ accountId: string; publicKey: string }>>
-    signAndSendTransaction(params: {
-      receiverId: string
-      actions: unknown[]
-    }): Promise<unknown>
-  }>
-}
+// ============================================================================
+// Business Logic - Works in ANY environment
+// ============================================================================
 
-/**
- * Business logic function that works with ANY signing method
- * This is the same code whether running server-side or browser-side!
- */
 async function addGuestbookMessage(
   near: Near,
   signerId: string,
   message: string,
 ) {
-  console.log(`Adding message from ${signerId}: "${message}"`)
-
-  const result = await near.call(
+  return await near.call(
     "guestbook.near-examples.testnet",
     "add_message",
     { text: message },
     { signerId, gas: "30 Tgas" },
   )
-
-  console.log("Message added successfully!")
-  return result
 }
 
-/**
- * Another business logic function - works everywhere!
- */
-async function sendTokensAndCall(
-  near: Near,
-  signerId: string,
-  receiverId: string,
-  amount: string,
-) {
-  console.log(`Sending ${amount} NEAR to ${receiverId} and calling contract`)
-
-  // Complex transaction with multiple actions
-  const result = await near
+async function batchTransfer(near: Near, signerId: string) {
+  return await near
     .transaction(signerId)
-    .transfer(receiverId, amount)
-    .functionCall(
-      "contract.testnet",
-      "on_receive",
-      { sender: signerId },
-      { gas: "50 Tgas" },
-    )
+    .transfer("alice.testnet", "1 NEAR")
+    .transfer("bob.testnet", "0.5 NEAR")
     .send()
-
-  console.log("Transaction completed!")
-  return result
 }
 
 // ============================================================================
-// Example 1: Server-side usage (Node.js with private key)
+// Environment 1: Server-side (Node.js with private key)
 // ============================================================================
-async function serverSideExample() {
-  console.log("\n=== Server-side Example ===\n")
 
+async function serverExample() {
   const near = new Near({
     network: "testnet",
-    privateKey: process.env.NEAR_PRIVATE_KEY || "ed25519:...",
-    signerId: "bot.testnet",
+    privateKey: (process.env["NEAR_PRIVATE_KEY"] ||
+      "ed25519:...") as PrivateKey,
+    defaultSignerId: "bot.testnet",
   })
 
-  // Use the same business logic functions!
-  await addGuestbookMessage(near, "bot.testnet", "Hello from server!")
-  await sendTokensAndCall(near, "bot.testnet", "receiver.testnet", "1 NEAR")
+  await addGuestbookMessage(near, "bot.testnet", "Hello from server")
+  await batchTransfer(near, "bot.testnet")
 }
 
 // ============================================================================
-// Example 2: Browser usage with wallet-selector
+// Environment 2: Browser with HOT Connect
 // ============================================================================
-async function browserWalletSelectorExample(wallet: WalletSelectorWallet) {
-  console.log("\n=== Browser (Wallet Selector) Example ===\n")
 
-  // Import adapter (you would do this at the top in real code)
-  const { fromWalletSelector } = await import("../src/index.js")
-
-  const near = new Near({
-    network: "testnet",
-    wallet: fromWalletSelector(wallet),
-  })
-
-  // Get user's account
-  const accounts = await wallet.getAccounts()
-  const signerId = accounts[0].accountId
-
-  // Use the SAME business logic functions!
-  await addGuestbookMessage(near, signerId, "Hello from browser wallet!")
-  await sendTokensAndCall(near, signerId, "receiver.testnet", "0.5 NEAR")
-}
-
-// ============================================================================
-// Example 3: Browser usage with HOT Connect
-// ============================================================================
-async function browserHotConnectExample(connector: HotConnectConnector) {
-  console.log("\n=== Browser (HOT Connect) Example ===\n")
-
-  // Import adapter (you would do this at the top in real code)
-  const { fromHotConnect } = await import("../src/index.js")
-
+async function browserHotConnect(connector: HotConnector) {
   const near = new Near({
     network: "mainnet",
     wallet: fromHotConnect(connector),
   })
 
-  // Get user's account
   const wallet = await connector.wallet()
   const accounts = await wallet.getAccounts()
   const signerId = accounts[0].accountId
 
-  // Use the SAME business logic functions!
-  await addGuestbookMessage(near, signerId, "Hello from HOT wallet!")
-  await sendTokensAndCall(near, signerId, "receiver.near", "1 NEAR")
+  await addGuestbookMessage(near, signerId, "Hello from browser")
+  await batchTransfer(near, signerId)
 }
 
 // ============================================================================
-// Example 4: Abstract wallet interface for maximum flexibility
+// Environment 3: Browser with Wallet Selector
 // ============================================================================
-async function universalExample(config: {
-  network: string
-  wallet?: WalletConnection
-  privateKey?: string
-  signerId?: string
-}) {
-  console.log("\n=== Universal Example ===\n")
 
-  // Create client - works with wallet OR private key
-  const near = new Near(config)
+async function browserWalletSelector(wallet: WalletSelectorWallet) {
+  const near = new Near({
+    network: "testnet",
+    wallet: fromWalletSelector(wallet),
+  })
 
-  // Determine signer ID from wallet or config
-  const signerId = config.signerId || "default.testnet"
+  const accounts = await wallet.getAccounts()
+  const signerId = accounts[0].accountId
 
-  // Business logic - completely agnostic to signing method!
-  await addGuestbookMessage(near, signerId, "Hello from anywhere!")
-
-  // This is the power of near-ts: write once, run anywhere
-  console.log("✅ Same code works server-side and browser-side!")
+  await addGuestbookMessage(near, signerId, "Hello from browser")
+  await batchTransfer(near, signerId)
 }
 
+// ============================================================================
+// Universal Factory Pattern
+// ============================================================================
+
+type NearConfig =
+  | { env: "server"; privateKey: PrivateKey; signerId: string }
+  | { env: "browser"; wallet: WalletConnection }
+
+function createNear(config: NearConfig): Near {
+  if (config.env === "server") {
+    return new Near({
+      network: "testnet",
+      privateKey: config.privateKey,
+      defaultSignerId: config.signerId,
+    })
+  } else {
+    return new Near({
+      network: "testnet",
+      wallet: config.wallet,
+    })
+  }
+}
+
+async function universalExample(config: NearConfig) {
+  const near = createNear(config)
+  const signerId = config.env === "server" ? config.signerId : "user.testnet"
+
+  // Same business logic regardless of environment
+  await addGuestbookMessage(near, signerId, "Universal code!")
+  await batchTransfer(near, signerId)
+}
+
+// ============================================================================
 // Run examples
-async function main() {
-  // Note: In real usage, you'd only run one of these based on your environment
+// ============================================================================
 
-  // Server-side
-  if (process.env.NEAR_PRIVATE_KEY) {
-    await serverSideExample()
+async function main() {
+  console.log("Universal Code Pattern\n")
+
+  if (process.env["NEAR_PRIVATE_KEY"]) {
+    console.log("Running server-side example...")
+    await serverExample()
   } else {
     console.log("Set NEAR_PRIVATE_KEY to run server-side example")
   }
 
-  // Universal approach
-  await universalExample({
-    network: "testnet",
-    privateKey: process.env.NEAR_PRIVATE_KEY,
-    signerId: "test.testnet",
-  })
+  console.log("\nKey insight: Same business logic works everywhere!")
+  console.log("- Server: uses private key")
+  console.log("- Browser: uses wallet")
+  console.log("- Code: identical API")
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -193,9 +153,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
 export {
   addGuestbookMessage,
-  sendTokensAndCall,
-  serverSideExample,
-  browserWalletSelectorExample,
-  browserHotConnectExample,
+  batchTransfer,
+  serverExample,
+  browserHotConnect,
+  browserWalletSelector,
   universalExample,
 }

@@ -13,6 +13,7 @@ export {
 export { Near } from "./core/near.js"
 export {
   DELEGATE_ACTION_PREFIX,
+  type SignedDelegateAction,
   serializeDelegateAction,
   serializeSignedDelegate,
 } from "./core/schema.js"
@@ -75,6 +76,7 @@ export {
   formatGas,
   Gas,
   generateKey,
+  generateNep413Nonce,
   generateSeedPhrase,
   isPrivateKey,
   isValidAccountId,
@@ -85,6 +87,7 @@ export {
   parseKey,
   parseSeedPhrase,
   validatePrivateKey,
+  verifyNep413Signature,
 } from "./utils/index.js"
 // Wallet adapters
 export { fromHotConnect, fromWalletSelector } from "./wallets/index.js"

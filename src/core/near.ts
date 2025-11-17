@@ -19,7 +19,10 @@ import {
 } from "./config-schemas.js"
 import { DEFAULT_FUNCTION_CALL_GAS } from "./constants.js"
 import { RpcClient } from "./rpc/rpc.js"
-import type { FinalExecutionOutcomeWithReceiptsMap } from "./rpc/rpc-schemas.js"
+import type {
+  FinalExecutionOutcome,
+  FinalExecutionOutcomeWithReceiptsMap,
+} from "./rpc/rpc-schemas.js"
 import { TransactionBuilder } from "./transaction.js"
 import type {
   CallOptions,
@@ -288,7 +291,7 @@ export class Near {
    * )
    * ```
    */
-  async call<T = unknown>(
+  async call<T = FinalExecutionOutcome>(
     contractId: string,
     methodName: string,
     args: object | Uint8Array = {},
@@ -366,7 +369,10 @@ export class Near {
    * This is a convenience wrapper over {@link Near.transaction} with a single
    * `transfer` action.
    */
-  async send(receiverId: string, amount: Amount): Promise<unknown> {
+  async send(
+    receiverId: string,
+    amount: Amount,
+  ): Promise<FinalExecutionOutcome> {
     const signerId = await this.getSignerId()
 
     // Use wallet if available
