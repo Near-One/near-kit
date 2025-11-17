@@ -346,27 +346,20 @@ describe("Transaction Actions - Integration Tests", () => {
       await nearWithAccountKey
         .transaction(accountId)
         .deployContract(accountId, contractCode)
-        .send()
+        .send({ waitUntil: "FINAL" })
 
       console.log(`✓ Contract deployed to: ${accountId}`)
 
       // Verify contract is deployed by calling a view method
-      // Note: Sandbox may have timing issues with code availability
-      try {
-        const messages = await near.view(accountId, "get_messages", {})
-        expect(messages).toBeDefined()
-        expect(Array.isArray(messages)).toBe(true)
-        console.log(
-          `✓ Contract is callable - get_messages returned ${
-            (messages as unknown[]).length
-          } messages`,
-        )
-      } catch (error) {
-        // Contract deployed but not yet available for calling
-        console.log(
-          `✓ Contract deployed (code may not be immediately available in sandbox)`,
-        )
-      }
+
+      const messages = await near.view(accountId, "get_messages", {})
+      expect(messages).toBeDefined()
+      expect(Array.isArray(messages)).toBe(true)
+      console.log(
+        `✓ Contract is callable - get_messages returned ${
+          (messages as unknown[]).length
+        } messages`,
+      )
     }, 30000)
 
     test("should deploy contract in same transaction as account creation", async () => {
