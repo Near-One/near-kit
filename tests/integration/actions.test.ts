@@ -103,7 +103,7 @@ describe("Transaction Actions - Integration Tests", () => {
       expect(balanceAfterNum).toBeGreaterThanOrEqual(balanceBeforeNum)
 
       console.log(
-        `✓ Beneficiary balance after deletion: ${balanceBefore} → ${balanceAfter} NEAR`
+        `✓ Beneficiary balance after deletion: ${balanceBefore} → ${balanceAfter} NEAR`,
       )
     }, 30000)
 
@@ -126,11 +126,12 @@ describe("Transaction Actions - Integration Tests", () => {
       const validatorKey = generateKey()
       const validatorId = `validator-${Date.now()}.${sandbox.rootAccount.id}`
 
-      // Create validator account
+      // Create validator account with enough balance for minimum stake
+      // Sandbox minimum stake is ~800,128 NEAR
       await near
         .transaction(sandbox.rootAccount.id)
         .createAccount(validatorId)
-        .transfer(validatorId, "100 NEAR")
+        .transfer(validatorId, "1000000 NEAR")
         .addKey(validatorKey.publicKey.toString(), {
           type: "fullAccess",
         })
@@ -146,9 +147,10 @@ describe("Transaction Actions - Integration Tests", () => {
         },
       })
 
+      // Stake with the validator public key
       await nearWithValidatorKey
         .transaction(validatorId)
-        .stake(validatorKey.publicKey.toString(), "50 NEAR")
+        .stake(validatorKey.publicKey.toString(), "900000 NEAR")
         .send()
       console.log(`✓ Stake transaction sent successfully`)
     }, 30000)
@@ -208,7 +210,7 @@ describe("Transaction Actions - Integration Tests", () => {
 
       const balanceAfter = await near.getBalance(sandbox.rootAccount.id)
       expect(Number.parseFloat(balanceAfter)).toBeGreaterThan(
-        Number.parseFloat(balanceBefore)
+        Number.parseFloat(balanceBefore),
       )
 
       console.log(`✓ Second key successfully used for transaction`)
@@ -249,7 +251,7 @@ describe("Transaction Actions - Integration Tests", () => {
         .send()
 
       console.log(
-        `✓ Function call key added: ${functionKey.publicKey.toString()}`
+        `✓ Function call key added: ${functionKey.publicKey.toString()}`,
       )
     }, 30000)
 
@@ -357,12 +359,12 @@ describe("Transaction Actions - Integration Tests", () => {
         console.log(
           `✓ Contract is callable - get_messages returned ${
             (messages as unknown[]).length
-          } messages`
+          } messages`,
         )
       } catch (error) {
         // Contract deployed but not yet available for calling
         console.log(
-          `✓ Contract deployed (code may not be immediately available in sandbox)`
+          `✓ Contract deployed (code may not be immediately available in sandbox)`,
         )
       }
     }, 30000)
@@ -503,14 +505,7 @@ describe("Transaction Actions - Integration Tests", () => {
 
   describe("delegate actions (meta-transactions)", () => {
     test("should create and execute a signed delegate action", async () => {
-      const { DelegateAction, signedDelegate } = await import(
-        "../../src/core/actions.js"
-      )
-      const { serializeDelegateAction } = await import(
-        "../../src/core/schema.js"
-      )
-      const { parseKey } = await import("../../src/utils/key.js")
-
+      // Execute a delegate action (meta-transaction) where a relayer submits a signed request
       // Create sender account (who wants to perform actions)
       const senderKey = generateKey()
       const senderId = `sender-${Date.now()}.${sandbox.rootAccount.id}`
@@ -553,7 +548,7 @@ describe("Transaction Actions - Integration Tests", () => {
         .send()
 
       console.log(
-        `✓ Created accounts: sender=${senderId}, relayer=${relayerId}, recipient=${recipientId}`
+        `✓ Created accounts: sender=${senderId}, relayer=${relayerId}, recipient=${recipientId}`,
       )
 
       // Get sender's nonce and current block height
@@ -564,38 +559,12 @@ describe("Transaction Actions - Integration Tests", () => {
         },
       })
 
-      const parsedSenderKey = parseKey(senderKey.secretKey)
-      const senderPublicKey = parsedSenderKey.publicKey
-      const accessKey = await nearWithSenderKey.rpc.getAccessKey(
-        senderId,
-        senderKey.publicKey.toString()
-      )
-      const status = await near.getStatus()
-
-      // Create delegate action: sender wants to transfer to recipient
-      const delegateAction = new DelegateAction(
-        senderId,
-        recipientId,
-        [
-          {
-            transfer: { deposit: BigInt("1000000000000000000000000") }, // 1 NEAR
-          },
-        ],
-        BigInt(accessKey.nonce) + BigInt(1),
-        BigInt(status.latestBlockHeight + 100),
-        senderPublicKey
-      )
-
-      console.log(`✓ Created delegate action`)
-
-      // Serialize and sign the delegate action
-      const delegateBytes = serializeDelegateAction(delegateAction)
-      const signature = parsedSenderKey.sign(delegateBytes)
+      const signedDelegateAction = await nearWithSenderKey
+        .transaction(senderId)
+        .transfer(recipientId, "1 NEAR")
+        .delegate({ blockHeightOffset: 100 })
 
       console.log(`✓ Signed delegate action`)
-
-      // Create the signed delegate action
-      const signedDelegateAction = signedDelegate(delegateAction, signature)
 
       // Relayer sends the transaction with the signed delegate
       const nearWithRelayerKey = new Near({
@@ -608,24 +577,21 @@ describe("Transaction Actions - Integration Tests", () => {
       const recipientBalanceBefore = await near.getBalance(recipientId)
 
       // The relayer submits the delegate action on behalf of the sender
-      const builder = nearWithRelayerKey.transaction(relayerId)
-      // @ts-expect-error - accessing private field for testing
-      builder.receiverId = senderId
-      // @ts-expect-error - accessing private field for testing
-      builder.actions.push(signedDelegateAction)
-
-      await builder.send({ waitUntil: "EXECUTED" })
+      await nearWithRelayerKey
+        .transaction(relayerId)
+        .signedDelegateAction(signedDelegateAction)
+        .send({ waitUntil: "EXECUTED" })
 
       console.log(`✓ Relayer submitted delegate action`)
 
       // Verify the transfer happened
       const recipientBalanceAfter = await near.getBalance(recipientId)
       expect(Number.parseFloat(recipientBalanceAfter)).toBeGreaterThan(
-        Number.parseFloat(recipientBalanceBefore)
+        Number.parseFloat(recipientBalanceBefore),
       )
 
       console.log(
-        `✓ Delegate action executed: ${recipientBalanceBefore} → ${recipientBalanceAfter} NEAR`
+        `✓ Delegate action executed: ${recipientBalanceBefore} → ${recipientBalanceAfter} NEAR`,
       )
     }, 30000)
   })

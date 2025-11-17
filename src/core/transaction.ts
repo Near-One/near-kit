@@ -30,6 +30,7 @@
  * - Use `.build()` to get unsigned transaction
  */
 
+import { sha256 } from "@noble/hashes/sha2.js"
 import { base58 } from "@scure/base"
 import {
   InvalidKeyError,
@@ -50,6 +51,9 @@ import { NonceManager } from "./nonce-manager.js"
 import type { RpcClient } from "./rpc/rpc.js"
 import {
   type AccessKeyPermissionBorsh,
+  type ClassicAction,
+  type SignedDelegateAction,
+  serializeDelegateAction,
   serializeSignedTransaction,
   serializeTransaction,
 } from "./schema.js"
@@ -58,6 +62,7 @@ import type {
   FinalExecutionOutcomeMap,
   KeyPair,
   KeyStore,
+  PublicKey,
   SendOptions,
   SignedTransaction,
   Signer,
@@ -77,6 +82,44 @@ export type AccessKeyPermission =
       methodNames?: string[]
       allowance?: Amount
     }
+
+type DelegateSigningOptions = {
+  receiverId?: string
+  /**
+   * Explicit block height at which the delegate action expires.
+   * If omitted, uses the current block height plus `blockHeightOffset`.
+   */
+  maxBlockHeight?: bigint
+  /**
+   * Number of blocks after the current height when the delegate action should expire.
+   * Defaults to 200 blocks if neither this nor `maxBlockHeight` is provided.
+   */
+  blockHeightOffset?: number
+  /**
+   * Override nonce to use for the delegate action. If omitted, the builder fetches
+   * the access key and uses (nonce + 1).
+   */
+  nonce?: bigint
+  /**
+   * Explicit public key to embed in the delegate action. Only required when the key
+   * cannot be resolved from the configured key store.
+   */
+  publicKey?: string | PublicKey
+}
+
+function publicKeysEqual(a: PublicKey, b: PublicKey): boolean {
+  if (a.keyType !== b.keyType || a.data.length !== b.data.length) {
+    return false
+  }
+
+  for (let i = 0; i < a.data.length; i += 1) {
+    if (a.data[i] !== b.data[i]) {
+      return false
+    }
+  }
+
+  return true
+}
 
 /**
  * Convert user-friendly permission format to Borsh format
@@ -149,6 +192,26 @@ export class TransactionBuilder {
   private invalidateCache(): this {
     delete this.cachedSignedTx
     return this
+  }
+
+  /**
+   * Resolve the key pair for the current signer from either `signWith()` or keyStore.
+   */
+  private async resolveKeyPair(): Promise<KeyPair> {
+    if (this.keyPair) {
+      return this.keyPair
+    }
+
+    if (this.ensureKeyStoreReady) {
+      await this.ensureKeyStoreReady()
+    }
+
+    const keyPair = await this.keyStore.get(this.signerId)
+    if (!keyPair) {
+      throw new InvalidKeyError(`No key found for account: ${this.signerId}`)
+    }
+
+    return keyPair
   }
 
   /**
@@ -355,6 +418,105 @@ export class TransactionBuilder {
   }
 
   /**
+   * Build and sign a delegate action from the queued actions.
+   *
+   * @param options - Optional overrides for receiver, nonce, and expiration
+   */
+  /**
+   * Add a signed delegate action to this transaction (for relayers).
+   */
+  signedDelegateAction(signedDelegate: SignedDelegateAction): this {
+    this.actions.push(signedDelegate)
+    this.receiverId = signedDelegate.signedDelegate.delegateAction.senderId
+    return this.invalidateCache()
+  }
+
+  /**
+   * Build and sign a delegate action from the queued actions.
+   *
+   * @returns Signed delegate action ready to be added to a relayer transaction
+   */
+  async delegate(
+    options: DelegateSigningOptions = {},
+  ): Promise<SignedDelegateAction> {
+    if (this.actions.length === 0) {
+      throw new NearError(
+        "Delegate action requires at least one action to perform",
+        "INVALID_TRANSACTION",
+      )
+    }
+
+    if (this.actions.some((action) => "signedDelegate" in action)) {
+      throw new NearError(
+        "Delegate actions cannot contain nested signed delegate actions",
+        "INVALID_TRANSACTION",
+      )
+    }
+
+    const receiverId = options.receiverId ?? this.receiverId
+    if (!receiverId) {
+      throw new NearError(
+        "Delegate action requires a receiver. Set receiverId via the first action or provide it explicitly.",
+        "INVALID_TRANSACTION",
+      )
+    }
+
+    const keyPair = await this.resolveKeyPair()
+    let delegatePublicKey: PublicKey
+    if (options.publicKey === undefined) {
+      delegatePublicKey = keyPair.publicKey
+    } else if (typeof options.publicKey === "string") {
+      delegatePublicKey = parsePublicKey(options.publicKey)
+    } else {
+      delegatePublicKey = options.publicKey
+    }
+
+    if (!publicKeysEqual(delegatePublicKey, keyPair.publicKey)) {
+      throw new InvalidKeyError(
+        "Delegate action public key must match the signer key. Use signWith() when you need a different key.",
+      )
+    }
+
+    let nonce: bigint
+    if (options.nonce !== undefined) {
+      nonce = options.nonce
+    } else {
+      const accessKey = await this.rpc.getAccessKey(
+        this.signerId,
+        delegatePublicKey.toString(),
+      )
+      nonce = BigInt(accessKey.nonce) + 1n
+    }
+
+    let maxBlockHeight: bigint
+    if (options.maxBlockHeight !== undefined) {
+      maxBlockHeight = options.maxBlockHeight
+    } else {
+      const status = await this.rpc.getStatus()
+      const offset = BigInt(options.blockHeightOffset ?? 200)
+      maxBlockHeight = BigInt(status.sync_info.latest_block_height) + offset
+    }
+
+    const delegateActions = this.actions.map(
+      (action) => action as ClassicAction,
+    )
+
+    const delegateAction = new actions.DelegateAction(
+      this.signerId,
+      receiverId,
+      delegateActions,
+      nonce,
+      maxBlockHeight,
+      delegatePublicKey,
+    )
+
+    const hash = sha256(serializeDelegateAction(delegateAction))
+    const signature = keyPair.sign(hash)
+
+    return actions.signedDelegate(delegateAction, signature)
+  }
+
+  /**
    * Override the signing function for this specific transaction.
    *
    * Use this to sign with a different signer than the one configured in the
@@ -440,20 +602,8 @@ export class TransactionBuilder {
       )
     }
 
-    // Get key pair - either from signWith() or keyStore
-    // Ensure any pending keystore initialization is complete before accessing keyStore
-    let keyPair = this.keyPair
-    if (!keyPair) {
-      if (this.ensureKeyStoreReady) {
-        await this.ensureKeyStoreReady()
-      }
-      keyPair = (await this.keyStore.get(this.signerId)) ?? undefined
-    }
-
-    if (!keyPair) {
-      throw new InvalidKeyError(`No key found for account: ${this.signerId}`)
-    }
-
+    // Resolve signer key pair (used for public key + nonce lookup)
+    const keyPair = await this.resolveKeyPair()
     const publicKey = keyPair.publicKey
 
     // Use NonceManager to get next nonce (handles concurrent transactions)
@@ -545,19 +695,7 @@ export class TransactionBuilder {
     // Use custom signer if provided, otherwise fall back to keyStore
     const signature = this.signer
       ? await this.signer(messageHashArray)
-      : await (async () => {
-          // Ensure any pending keystore initialization is complete
-          if (this.ensureKeyStoreReady) {
-            await this.ensureKeyStoreReady()
-          }
-          const keyPair = await this.keyStore.get(this.signerId)
-          if (!keyPair) {
-            throw new InvalidKeyError(
-              `No key found for account: ${this.signerId}`,
-            )
-          }
-          return keyPair.sign(messageHashArray)
-        })()
+      : (await this.resolveKeyPair()).sign(messageHashArray)
 
     // Cache the signed transaction
     this.cachedSignedTx = {
