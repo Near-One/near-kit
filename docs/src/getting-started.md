@@ -1,4 +1,4 @@
-# 1. Getting Started with near-kit
+# Getting Started with near-kit
 
 Welcome to `near-kit`! This guide will walk you through the initial setup and your first real transaction, explaining each step along the way. By the end, you'll have a solid understanding of how to interact with the NEAR blockchain using this library.
 
@@ -101,5 +101,3 @@ You should see output confirming the client initialization, the number of messag
 ## What's Next?
 
 Now that you've sent your first transaction, let's dive into the core concepts that make `near-kit` powerful and easy to use.
-
-- **Next Guide:** [02 - Core Concepts](./02-core-concepts.md)

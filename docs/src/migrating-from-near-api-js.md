@@ -1,4 +1,4 @@
-# 8. Migrating from near-api-js
+# Migrating from near-api-js
 
 If you're coming from `near-api-js`, you'll find that `near-kit` accomplishes the same tasks with a more modern and streamlined API. This guide highlights the key differences to help you migrate quickly.
 
@@ -14,20 +14,20 @@ If you're coming from `near-api-js`, you'll find that `near-kit` accomplishes th
 **near-api-js:**
 
 ```typescript
-const { connect, keyStores, KeyPair } = require("near-api-js");
+const { connect, keyStores, KeyPair } = require("near-api-js")
 
-const keyStore = new keyStores.InMemoryKeyStore();
-const keyPair = KeyPair.fromString("ed25519:...");
-await keyStore.setKey("testnet", "alice.testnet", keyPair);
+const keyStore = new keyStores.InMemoryKeyStore()
+const keyPair = KeyPair.fromString("ed25519:...")
+await keyStore.setKey("testnet", "alice.testnet", keyPair)
 
 const config = {
   networkId: "testnet",
   keyStore,
   nodeUrl: "https://rpc.testnet.near.org",
   walletUrl: "https://wallet.testnet.near.org",
-};
-const near = await connect(config);
-const account = await near.account("alice.testnet");
+}
+const near = await connect(config)
+const account = await near.account("alice.testnet")
 ```
 
 **near-kit:**
@@ -68,12 +68,12 @@ const response = await near.view(
 **near-api-js:**
 
 ```typescript
-const { utils } = require("near-api-js");
+const { utils } = require("near-api-js")
 
 await account.sendMoney(
   "bob.testnet",
   utils.format.parseNearAmount("10.5") // Manual unit conversion
-);
+)
 ```
 
 **near-kit:**
@@ -88,6 +88,7 @@ await near
 ### Calling a Contract Method
 
 **near-api-js:**
+
 ```typescript
 await account.functionCall({
   contractId: "market.near",
@@ -95,8 +96,8 @@ await account.functionCall({
   args: { token_id: "token-1" },
   gas: "50000000000000", // Manual gas calculation
   attachedDeposit: utils.format.parseNearAmount("10"),
-});
-````
+})
+```
 
 **near-kit:**
 

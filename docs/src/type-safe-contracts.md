@@ -1,4 +1,4 @@
-# 4. Type-Safe Contracts
+# Type-Safe Contracts
 
 While `near.view()` and `near.call()` are powerful, they are not type-safe out of the box. You can pass any method name or arguments, and TypeScript won't catch mistakes.
 
@@ -76,5 +76,3 @@ This simple pattern catches bugs before you even run your code, dramatically spe
 ## What's Next?
 
 So far, we've focused on server-side interactions. Let's explore how to use `near-kit` in the browser to interact with user wallets.
-
-- **Next Guide:** [05 - Browser Wallets](./05-browser-wallets.md)

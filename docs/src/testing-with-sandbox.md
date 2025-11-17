@@ -1,4 +1,4 @@
-# 6. Testing with Sandbox
+# Testing with Sandbox
 
 Testing blockchain applications can be slow and expensive. You have to wait for transaction finality on a public testnet, and managing test accounts and state is difficult.
 
@@ -91,5 +91,3 @@ The `Sandbox.start()` method returns an object with everything you need:
 - `sandbox.rootAccount.secretKey`: The private key for the root account.
 
 When you pass the `sandbox` object to `new Near()`, `near-kit` automatically configures the RPC connection and loads the root account's key into an in-memory keystore, making it ready to sign transactions immediately.
-
-- **Next Guide:** [07 - Handling Errors](./07-error-handling.md)

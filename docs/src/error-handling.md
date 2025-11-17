@@ -1,4 +1,4 @@
-# 7. Handling Errors
+# Handling Errors
 
 When you're interacting with a decentralized network, a lot can go wrong: a user might not have enough funds, a contract might have a bug, or the network itself could be slow. `near-kit` provides a set of typed errors to help you handle these cases gracefully.
 
@@ -70,5 +70,3 @@ try {
   - `error.retryable`: A boolean indicating if you can safely retry the same operation.
 
 By handling these typed errors, you can build a much more robust and user-friendly application.
-
-- **Next Guide:** [08 - Migrating from `near-api-js`](./08-migrating-from-near-api-js.md)

@@ -3,6 +3,13 @@ node_modules
 node_modules/**
 .jj/
 
+docs/book/
+docs/book/**
+
+./docs/book/**
+book/**
+**/book/**
+
 
 # output
 out

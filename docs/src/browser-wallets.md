@@ -1,4 +1,4 @@
-# 5. Browser Wallets
+# Browser Wallets
 
 While server-side applications use private keys, decentralized applications (dApps) in the browser need to interact with a user's wallet. `near-kit` provides simple adapters to integrate with the most popular wallet connection libraries.
 

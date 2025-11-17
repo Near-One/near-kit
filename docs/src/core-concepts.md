@@ -1,4 +1,4 @@
-# 2. Core Concepts
+# Core Concepts
 
 Understanding a few core concepts will help you get the most out of `near-kit`.
 
@@ -51,11 +51,9 @@ Use `near.transaction()` for any operation that writes data.
 ```typescript
 const result = await near
   .transaction("alice.testnet")
-  .functionCall(
-    "guestbook.near-examples.testnet",
-    "add_message",
-    { text: "Hello!" }
-  )
+  .functionCall("guestbook.near-examples.testnet", "add_message", {
+    text: "Hello!",
+  })
   .send()
 ```
 
@@ -111,5 +109,3 @@ This approach makes your code more readable and less error-prone.
 ## What's Next?
 
 Now that you understand the basic building blocks, let's take a closer look at how to construct complex transactions.
-
-- **Next Guide:** [03 - Making Transactions](./03-making-transactions.md)

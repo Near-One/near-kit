@@ -1,4 +1,4 @@
-# 3. Making Transactions
+# Making Transactions
 
 The `near.transaction()` builder is the heart of `near-kit`. It provides a fluent, chainable API to construct and send transactions with one or more actions.
 
@@ -129,5 +129,3 @@ console.log(`${newAccount} created successfully!`)
 ## What's Next?
 
 Now that you can build any transaction, let's see how `near-kit` can make your contract interactions safer and more developer-friendly with TypeScript.
-
-- **Next Guide:** [04 - Type-Safe Contracts](./04-type-safe-contracts.md)
