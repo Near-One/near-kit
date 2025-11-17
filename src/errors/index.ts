@@ -1,9 +1,18 @@
 /**
- * Error classes for NEAR client library
+ * Error classes for the NEAR client library.
+ *
+ * @remarks
+ * All errors in this module extend {@link NearError}, which carries a stable
+ * `code` string and optional `data` field. Many errors also expose a
+ * `retryable` flag to indicate whether the operation is safe to retry.
  */
 
 /**
- * Base error class for all NEAR-related errors
+ * Base error class for all NEAR-related errors.
+ *
+ * Provides a stable `code` and optional `data` payload for structured error
+ * handling. Concrete error subclasses in this module narrow down specific
+ * failure scenarios (network issues, contract panics, invalid transactions, etc.).
  */
 export class NearError extends Error {
   code: string

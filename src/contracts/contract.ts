@@ -1,13 +1,9 @@
-/**
- * Type-safe contract interface
- */
-
 import type { BlockReference } from "../core/config-schemas.js"
 import type { Near } from "../core/near.js"
 import type { CallOptions } from "../core/types.js"
 
 /**
- * Utility type to automatically add options parameter to call methods
+ * Utility type to automatically add options parameter to call methods.
  *
  * Usage:
  * ```typescript
@@ -21,7 +17,7 @@ import type { CallOptions } from "../core/types.js"
  * }>
  * ```
  *
- * The call method will automatically get options parameter:
+ * The call method will automatically get an options parameter:
  * increment: (args: { amount: number }, options?: CallOptions) => Promise<void>
  */
 export type Contract<
@@ -45,7 +41,7 @@ export type Contract<
 }
 
 /**
- * Contract method interface
+ * Base contract method interface used by {@link Contract}.
  *
  * Methods can be defined as:
  * - View methods: (args?: ArgsType | Uint8Array, options?: BlockReference) => Promise<ReturnType>
@@ -62,7 +58,15 @@ export interface ContractMethods {
 }
 
 /**
- * Create a type-safe contract proxy
+ * Create a type-safe contract proxy for a NEAR contract.
+ *
+ * @param near - The {@link Near} client instance to use for calls.
+ * @param contractId - Account ID of the target contract.
+ *
+ * @returns A proxy implementing the given {@link ContractMethods} interface.
+ *
+ * @remarks
+ * Prefer using {@link Near.contract} instead of calling this function directly.
  */
 export function createContract<T extends ContractMethods>(
   near: Near,
@@ -103,7 +107,10 @@ export function createContract<T extends ContractMethods>(
 }
 
 /**
- * Helper to extend Near class with contract method
+ * Helper to extend {@link Near} prototype with a `contract` method.
+ *
+ * @internal This is used to keep the core {@link Near} implementation focused;
+ * library users should call {@link Near.contract} instead of using this helper.
  */
 export function addContractMethod(nearPrototype: typeof Near.prototype): void {
   nearPrototype.contract = function <T extends ContractMethods>(

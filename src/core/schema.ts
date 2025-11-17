@@ -365,8 +365,9 @@ function delegateActionToZorsh(delegateAction: DelegateAction) {
 }
 
 /**
- * Convert our PublicKey type to zorsh-compatible format
- * Exported for use in action helpers
+ * Convert our PublicKey type to zorsh-compatible format.
+ *
+ * @internal Exported for use in action helpers only.
  */
 export function publicKeyToZorsh(pk: Ed25519PublicKey): {
   ed25519Key: { data: number[] }
@@ -388,8 +389,9 @@ export function publicKeyToZorsh(pk: PublicKey) {
 }
 
 /**
- * Convert our Signature type to zorsh-compatible format
- * Exported for use in action helpers
+ * Convert our Signature type to zorsh-compatible format.
+ *
+ * @internal Exported for use in action helpers only.
  */
 export function signatureToZorsh(sig: Ed25519Signature): {
   ed25519Signature: { data: number[] }

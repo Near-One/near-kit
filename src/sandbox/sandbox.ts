@@ -188,7 +188,8 @@ export class Sandbox {
 // ==================== Helper Functions ====================
 
 /**
- * Get platform identifier for downloading correct binary
+ * Get platform identifier for downloading correct binary.
+ * @internal
  */
 function getPlatformId(): PlatformInfo {
   const system = os.platform()
@@ -209,7 +210,8 @@ function getPlatformId(): PlatformInfo {
 }
 
 /**
- * Get directory for storing sandbox binaries
+ * Get directory for storing sandbox binaries.
+ * @internal
  */
 function getBinaryDir(): string {
   const dir = path.join(os.homedir(), ".near-kit", "sandbox", "bin")
@@ -217,7 +219,8 @@ function getBinaryDir(): string {
 }
 
 /**
- * Download and extract sandbox binary
+ * Download and extract sandbox binary.
+ * @internal
  */
 async function downloadBinary(version: string): Promise<string> {
   const { system, arch } = getPlatformId()
@@ -284,14 +287,16 @@ async function downloadBinary(version: string): Promise<string> {
 }
 
 /**
- * Ensure binary is available and return its path
+ * Ensure binary is available and return its path.
+ * @internal
  */
 async function ensureBinary(version: string): Promise<string> {
   return await downloadBinary(version)
 }
 
 /**
- * Run sandbox init command
+ * Run sandbox init command.
+ * @internal
  */
 async function runInit(binaryPath: string, homeDir: string): Promise<void> {
   const args = ["--home", homeDir, "init", "--chain-id", "localnet"]
@@ -334,7 +339,8 @@ async function runInit(binaryPath: string, homeDir: string): Promise<void> {
 }
 
 /**
- * Load validator key from sandbox home directory
+ * Load validator key from sandbox home directory.
+ * @internal
  */
 async function loadValidatorKey(homeDir: string): Promise<ValidatorKey> {
   const keyPath = path.join(homeDir, "validator_key.json")
@@ -348,7 +354,8 @@ async function loadValidatorKey(homeDir: string): Promise<ValidatorKey> {
 }
 
 /**
- * Find an available port by letting the OS choose
+ * Find an available port by letting the OS choose.
+ * @internal
  */
 async function findAvailablePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -372,7 +379,8 @@ async function findAvailablePort(): Promise<number> {
 }
 
 /**
- * Ping sandbox RPC endpoint to check if it's ready
+ * Ping sandbox RPC endpoint to check if it's ready.
+ * @internal
  */
 async function pingRpc(url: string, timeoutMs = 1000): Promise<boolean> {
   const controller = new AbortController()
@@ -399,7 +407,8 @@ async function pingRpc(url: string, timeoutMs = 1000): Promise<boolean> {
 }
 
 /**
- * Wait for sandbox to be ready
+ * Wait for sandbox to be ready.
+ * @internal
  */
 async function waitForReady(
   rpcUrl: string,
@@ -418,7 +427,8 @@ async function waitForReady(
 }
 
 /**
- * Sleep helper
+ * Sleep helper.
+ * @internal
  */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))

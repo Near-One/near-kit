@@ -1,7 +1,3 @@
-/**
- * RPC client for NEAR Protocol
- */
-
 import { base64 } from "@scure/base"
 import {
   InvalidTransactionError,
@@ -71,6 +67,14 @@ const DEFAULT_RETRY_CONFIG: RpcRetryConfig = {
   initialDelayMs: 1000, // 1 second
 }
 
+/**
+ * Low-level JSON-RPC client for NEAR Protocol.
+ *
+ * @remarks
+ * Most applications should use {@link Near} instead of interacting with this
+ * class directly. `RpcClient` is exposed for advanced use cases that need full
+ * control over RPC calls or access to methods not wrapped by `Near`.
+ */
 export class RpcClient {
   private readonly url: string
   private readonly headers: Record<string, string>
@@ -93,12 +97,25 @@ export class RpcClient {
   }
 
   /**
-   * Sleep for the specified number of milliseconds
+   * Sleep for the specified number of milliseconds.
+   * @internal
    */
   private async sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
+  /**
+   * Perform a raw JSON-RPC call with automatic retries and error mapping.
+   *
+   * @param method - RPC method name (e.g. `"query"`, `"status"`).
+   * @param params - RPC params object or array.
+   *
+   * @returns Parsed JSON result typed as `T`.
+   *
+   * @throws {NetworkError} On HTTP failures, network issues, or malformed responses.
+   * @throws {InvalidTransactionError} For transaction failures detected by {@link parseRpcError}.
+   * @throws {NearError} For other RPC-level errors.
+   */
   async call<T = unknown>(method: string, params: unknown): Promise<T> {
     const request: RpcRequest = {
       jsonrpc: "2.0",
@@ -197,6 +214,12 @@ export class RpcClient {
     throw lastError || new NetworkError("Unknown error during RPC call")
   }
 
+  /**
+   * Perform a generic `query` RPC call.
+   *
+   * @param path - `request_type` (e.g. `"view_account"`, `"view_access_key"`).
+   * @param data - Raw args as base64 string or bytes.
+   */
   async query<T = unknown>(
     path: string,
     data: string | Uint8Array,
@@ -208,6 +231,14 @@ export class RpcClient {
     })
   }
 
+  /**
+   * Call a contract view function via RPC.
+   *
+   * @param contractId - Account ID of the target contract.
+   * @param methodName - Name of the view method.
+   * @param args - Arguments object or raw bytes; defaults to `{}`.
+   * @param options - Optional {@link BlockReference} to control finality or block.
+   */
   async viewFunction(
     contractId: string,
     methodName: string,
@@ -236,6 +267,12 @@ export class RpcClient {
     return ViewFunctionCallResultSchema.parse(result)
   }
 
+  /**
+   * Get basic account information via `view_account`.
+   *
+   * @param accountId - Account ID to query.
+   * @param options - Optional {@link BlockReference} to control finality or block.
+   */
   async getAccount(
     accountId: string,
     options?: BlockReference,
@@ -251,6 +288,13 @@ export class RpcClient {
     return AccountViewSchema.parse(result)
   }
 
+  /**
+   * Get an access key via `view_access_key`.
+   *
+   * @param accountId - Account ID that owns the key.
+   * @param publicKey - Public key string (e.g. `"ed25519:..."`).
+   * @param options - Optional {@link BlockReference} to control finality or block.
+   */
   async getAccessKey(
     accountId: string,
     publicKey: string,
@@ -271,6 +315,12 @@ export class RpcClient {
     return AccessKeyViewSchema.parse(result)
   }
 
+  /**
+   * Send a signed transaction via `send_tx`.
+   *
+   * @param signedTransaction - Borsh-serialized signed transaction bytes.
+   * @param waitUntil - Execution status level to wait for (see {@link TxExecutionStatus}).
+   */
   async sendTransaction<
     W extends keyof FinalExecutionOutcomeMap = "EXECUTED_OPTIMISTIC",
   >(
@@ -355,6 +405,13 @@ export class RpcClient {
     return parsed as FinalExecutionOutcomeMap[W]
   }
 
+  /**
+   * Query transaction status with receipts via `EXPERIMENTAL_tx_status`.
+   *
+   * @param txHash - Transaction hash.
+   * @param senderAccountId - Account ID that sent the transaction.
+   * @param waitUntil - Execution status level to wait for.
+   */
   async getTransactionStatus<
     W extends
       keyof FinalExecutionOutcomeWithReceiptsMap = "EXECUTED_OPTIMISTIC",
@@ -441,11 +498,19 @@ export class RpcClient {
     return parsed as FinalExecutionOutcomeWithReceiptsMap[W]
   }
 
+  /**
+   * Get node status via `status`.
+   */
   async getStatus(): Promise<StatusResponse> {
     const result = await this.call("status", [])
     return StatusResponseSchema.parse(result)
   }
 
+  /**
+   * Get gas price via `gas_price`.
+   *
+   * @param blockId - Optional block hash or height; `null` for latest.
+   */
   async getGasPrice(blockId: string | null = null): Promise<GasPriceResponse> {
     const result = await this.call("gas_price", [blockId])
     return GasPriceResponseSchema.parse(result)

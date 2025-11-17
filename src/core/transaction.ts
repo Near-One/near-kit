@@ -107,6 +107,10 @@ type DelegateSigningOptions = {
   publicKey?: string | PublicKey
 }
 
+/**
+ * Compare two public keys for byte-level equality.
+ * @internal
+ */
 function publicKeysEqual(a: PublicKey, b: PublicKey): boolean {
   if (a.keyType !== b.keyType || a.data.length !== b.data.length) {
     return false
@@ -122,7 +126,8 @@ function publicKeysEqual(a: PublicKey, b: PublicKey): boolean {
 }
 
 /**
- * Convert user-friendly permission format to Borsh format
+ * Convert user-friendly permission format to Borsh format.
+ * @internal
  */
 function toAccessKeyPermissionBorsh(
   permission: AccessKeyPermission,
@@ -142,6 +147,13 @@ function toAccessKeyPermissionBorsh(
   }
 }
 
+/**
+ * Fluent builder for constructing and sending NEAR transactions.
+ *
+ * Created via {@link Near.transaction}. Supports chaining multiple actions
+ * (transfers, function calls, key management, staking, delegate actions) into
+ * a single atomic transaction.
+ */
 export class TransactionBuilder {
   // Shared nonce manager across all TransactionBuilder instances
   private static nonceManager = new NonceManager()
@@ -215,7 +227,16 @@ export class TransactionBuilder {
   }
 
   /**
-   * Add a token transfer action
+   * Add a token transfer action.
+   *
+   * @param receiverId - Account ID that will receive the tokens.
+   * @param amount - Amount to transfer, expressed as {@link Amount} (e.g. `"10 NEAR"`).
+   *
+   * @returns This builder instance for chaining.
+   *
+   * @remarks
+   * If no receiver has been set yet, this also sets the transaction `receiverId`
+   * to `receiverId`.
    */
   transfer(receiverId: string, amount: Amount): this {
     const amountYocto = normalizeAmount(amount)
@@ -229,7 +250,20 @@ export class TransactionBuilder {
   }
 
   /**
-   * Add a function call action
+   * Add a function call action.
+   *
+   * @param contractId - Account ID of the target contract.
+   * @param methodName - Name of the change method to call.
+   * @param args - Arguments object or raw bytes; defaults to `{}`.
+   * @param options - Optional gas and attached deposit settings.
+   *
+   * @returns This builder instance for chaining.
+   *
+   * @remarks
+   * - `options.gas` accepts human-readable values such as `"30 Tgas"` or {@link Gas.Tgas}.
+   * - `options.attachedDeposit` uses {@link Amount} semantics (e.g. `"1 yocto"`).
+   * - If no receiver has been set yet, this also sets the transaction `receiverId`
+   *   to `contractId`.
    */
   functionCall(
     contractId: string,

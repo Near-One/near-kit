@@ -259,6 +259,18 @@ export type {
 
 export type { NearConfig } from "./config-schemas.js"
 
+/**
+ * Pluggable key store interface used by {@link Near} and {@link TransactionBuilder}.
+ *
+ * Implementations are responsible for persisting key pairs (in memory, on disk,
+ * in secure hardware, etc.). The bundled implementations are:
+ *
+ * - {@link InMemoryKeyStore} for ephemeral keys
+ * - {@link FileKeyStore} for NEAR-CLI compatible on-disk storage
+ *
+ * @remarks
+ * All methods are asynchronous to support remote or secure storage backends.
+ */
 export interface KeyStore {
   add(
     accountId: string,
@@ -281,6 +293,13 @@ export type { CallOptions } from "./config-schemas.js"
 
 // ==================== Contract Interface ====================
 
+/**
+ * Base contract method shape used by {@link Contract}.
+ *
+ * @remarks
+ * Library users typically define their own contract interfaces that extend this
+ * structure and then pass them to {@link Near.contract}.
+ */
 export interface ContractMethods {
   view: Record<string, (...args: unknown[]) => Promise<unknown>>
   call: Record<string, (...args: unknown[]) => Promise<unknown>>

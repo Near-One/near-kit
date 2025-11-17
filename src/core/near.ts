@@ -31,6 +31,18 @@ import type {
   WalletConnection,
 } from "./types.js"
 
+/**
+ * Main client for interacting with the NEAR blockchain.
+ *
+ * Wraps RPC access, key management, wallet integrations, and the fluent
+ * transaction builder. Most applications create one `Near` instance per
+ * network and reuse it for all operations.
+ *
+ * @remarks
+ * Configure the client with {@link NearConfig} to choose networks, key stores,
+ * wallets, and retry behavior. For a guided overview see
+ * `docs/01-getting-started.md` and `docs/02-core-concepts.md`.
+ */
 export class Near {
   private rpc!: RpcClient
   private keyStore!: KeyStore
@@ -152,6 +164,7 @@ export class Near {
 
   /**
    * Resolve key store from config input
+   * @internal
    */
   private resolveKeyStore(
     keyStoreConfig?: KeyStore | string | Record<string, string>,
@@ -176,6 +189,7 @@ export class Near {
 
   /**
    * Get signer ID from options, default, or wallet
+   * @internal
    */
   private async getSignerId(signerId?: string): Promise<string> {
     if (signerId) return signerId
@@ -202,7 +216,21 @@ export class Near {
   }
 
   /**
-   * Call a view function on a contract (read-only, no gas)
+   * Call a view function on a contract (read-only, no gas).
+   *
+   * @param contractId - Target contract account ID.
+   * @param methodName - Name of the view method to call.
+   * @param args - Arguments object or raw bytes; defaults to `{}`.
+   * @param options - Optional {@link BlockReference} to specify finality or block.
+   *
+   * @returns Parsed JSON result when the contract returns JSON, otherwise the
+   * raw string value typed as `T`.
+   *
+   * @remarks
+   * - View calls are free and do not require a signer or gas.
+   * - Errors thrown by the contract surface as {@link ContractExecutionError}.
+   *
+   * @see NearConfig.defaultWaitUntil
    */
   async view<T = unknown>(
     contractId: string,
@@ -233,7 +261,32 @@ export class Near {
   }
 
   /**
-   * Call a change function on a contract (requires signature and gas)
+   * Call a change function on a contract (requires signature and gas).
+   *
+   * Uses the connected wallet when available, otherwise falls back to the
+   * configured signer / private key / key store.
+   *
+   * @param contractId - Target contract account ID.
+   * @param methodName - Name of the change method to call.
+   * @param args - Arguments object or raw bytes; defaults to `{}`.
+   * @param options - Call options such as gas, attached deposit, signerId and wait level.
+   *
+   * @returns The decoded contract return value typed as `T`.
+   *
+   * @throws {NearError} If no signer can be resolved.
+   * @throws {FunctionCallError} If the contract panics or returns an error.
+   * @throws {InvalidTransactionError} If the transaction itself is invalid.
+   * @throws {NetworkError} If the RPC request fails after retries.
+   *
+   * @example
+   * ```typescript
+   * await near.call(
+   *   "contract.near",
+   *   "increment",
+   *   { by: 1 },
+   *   { attachedDeposit: "1 yocto", gas: "30 Tgas" },
+   * )
+   * ```
    */
   async call<T = unknown>(
     contractId: string,
@@ -298,7 +351,20 @@ export class Near {
   }
 
   /**
-   * Send NEAR tokens to an account
+   * Send NEAR tokens to an account.
+   *
+   * @param receiverId - Account ID that will receive the tokens.
+   * @param amount - Amount to send, expressed as {@link Amount} (e.g. `"10 NEAR"` or `"1 yocto"`).
+   *
+   * @returns The final transaction outcome from the wallet or RPC.
+   *
+   * @throws {NearError} If no signer can be resolved.
+   * @throws {InvalidTransactionError} If the transfer transaction is invalid.
+   * @throws {NetworkError} If the RPC request fails after retries.
+   *
+   * @remarks
+   * This is a convenience wrapper over {@link Near.transaction} with a single
+   * `transfer` action.
    */
   async send(receiverId: string, amount: Amount): Promise<unknown> {
     const signerId = await this.getSignerId()
@@ -319,7 +385,7 @@ export class Near {
   }
 
   /**
-   * Sign a message using NEP-413 standard
+   * Sign a message using NEP-413 standard.
    *
    * NEP-413 enables off-chain message signing for authentication and ownership verification
    * without gas fees or blockchain transactions. Useful for:
@@ -398,7 +464,20 @@ export class Near {
   }
 
   /**
-   * Get account balance in NEAR
+   * Get account balance in NEAR.
+   *
+   * @param accountId - Account ID to query.
+   * @param options - Optional {@link BlockReference} to control finality or block.
+   *
+   * @returns Balance formatted as `"X.YY NEAR"`.
+   *
+   * @throws {AccountDoesNotExistError} If the account does not exist.
+   * @throws {NetworkError} If the RPC request fails.
+   *
+   * @remarks
+   * This is a convenience helper over {@link RpcClient.getAccount}. For more
+   * detailed information (storage, locked balance, etc.) call `rpc.getAccount`
+   * directly.
    */
   async getBalance(
     accountId: string,
@@ -415,7 +494,16 @@ export class Near {
   }
 
   /**
-   * Check if an account exists
+   * Check if an account exists.
+   *
+   * @param accountId - Account ID to check.
+   * @param options - Optional {@link BlockReference} to control finality or block.
+   *
+   * @returns `true` if the account exists, `false` otherwise.
+   *
+   * @remarks
+   * This method swallows all errors and returns `false` on failure. Use
+   * {@link RpcClient.getAccount} if you need to distinguish error causes.
    */
   async accountExists(
     accountId: string,
@@ -494,7 +582,9 @@ export class Near {
   }
 
   /**
-   * Get network status
+   * Get basic network status information.
+   *
+   * @returns An object containing `chainId`, `latestBlockHeight`, and `syncing` flag.
    */
   async getStatus(): Promise<{
     chainId: string
@@ -511,7 +601,15 @@ export class Near {
   }
 
   /**
-   * Batch multiple read operations
+   * Batch multiple read operations.
+   *
+   * @param promises - Promises to execute in parallel.
+   *
+   * @returns A tuple of resolved values preserving the input order.
+   *
+   * @remarks
+   * This is a thin wrapper over `Promise.all` with a tuple-friendly signature.
+   * It does not perform any RPC-level batching.
    */
   async batch<T extends unknown[]>(
     ...promises: Array<Promise<T[number]>>
@@ -560,7 +658,21 @@ export class Near {
   }
 
   /**
-   * Create a type-safe contract interface
+   * Create a type-safe contract interface.
+   *
+   * @param contractId - Account ID of the target contract.
+   *
+   * @returns A proxy implementing your {@link ContractMethods} interface.
+   *
+   * @example
+   * ```typescript
+   * type Counter = Contract<{
+   *   view: { get_count: () => Promise<number> }
+   *   call: { increment: () => Promise<void> }
+   * }>
+   *
+   * const counter = near.contract<Counter>("counter.near")
+   * ```
    */
   contract<T extends ContractMethods>(contractId: string): T {
     return createContract<T>(this, contractId)
