@@ -49,6 +49,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage/lcov.info
+          flags: unit-tests
 
   integration-tests:
     runs-on: arc-runner-set
@@ -74,6 +75,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage/lcov.info
+          flags: integration-tests
 
   wallet-tests:
     runs-on: arc-runner-set
@@ -96,3 +98,4 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage/lcov.info
+          flags: wallet-tests
