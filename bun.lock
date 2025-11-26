@@ -10,7 +10,7 @@
         "@scure/base": "^2.0.0",
         "@scure/bip32": "^2.0.1",
         "@scure/bip39": "^2.0.1",
-        "@zorsh/zorsh": "^0.3.3",
+        "@zorsh/zorsh": "^0.4.0",
         "tar": "^7.5.2",
         "zod": "^4.1.12",
       },
@@ -352,7 +352,7 @@
 
     "@walletconnect/window-metadata": ["@walletconnect/window-metadata@1.0.1", "", { "dependencies": { "@walletconnect/window-getters": "^1.0.1", "tslib": "1.14.1" } }, "sha512-9koTqyGrM2cqFRW517BPY/iEtUDx2r1+Pwwu5m7sJ7ka79wi3EyqhqcICk/yDmv6jAS1rjKgTKXlEhanYjijcA=="],
 
-    "@zorsh/zorsh": ["@zorsh/zorsh@0.3.3", "", {}, "sha512-Fu+iihpwuWPki/I93Bnocj4wmsDaOIfplzvbWGY1zvkGkvPq7y+npE2/Sub0bJJ0EB2C6fH/JvHkbH9B+9OIDQ=="],
+    "@zorsh/zorsh": ["@zorsh/zorsh@0.4.0", "", {}, "sha512-lDzbhmGFgk5yQOI78v99186nyk+6XW9rGW2BTz/RT1gVM+oiUTtDoTg5/tUYFe+u/+cy9XPmpWWFgRyfYfQcUA=="],
 
     "abitype": ["abitype@1.1.1", "", { "peerDependencies": { "typescript": ">=5.0.4", "zod": "^3.22.0 || ^4.0.0" }, "optionalPeers": ["typescript", "zod"] }, "sha512-Loe5/6tAgsBukY95eGaPSDmQHIjRZYQq8PB1MpsNccDIK8WiV+Uw6WzaIXipvaxTEL2yEB0OpEaQv3gs8pkS9Q=="],
 
@@ -754,7 +754,7 @@
 
     "yallist": ["yallist@5.0.0", "", {}, "sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw=="],
 
-    "zod": ["zod@4.1.12", "", {}, "sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ=="],
+    "zod": ["zod@4.1.13", "", {}, "sha512-AvvthqfqrAhNH9dnfmrfKzX5upOdjUVJYFqNSlkmGf64gRaTzlPwz99IHYnVs28qYAybvAlBV+H7pn0saFY4Ig=="],
 
     "@isaacs/fs-minipass/minipass": ["minipass@7.1.2", "", {}, "sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw=="],
 
