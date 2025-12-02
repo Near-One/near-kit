@@ -7,6 +7,7 @@
  */
 
 import { base58 } from "@scure/base"
+import { parseCodeHash } from "../utils/state-init.js"
 import type {
   AccessKeyPermissionBorsh,
   AddKeyAction,
@@ -16,6 +17,7 @@ import type {
   DeleteKeyAction,
   DeployContractAction,
   DeployGlobalContractAction,
+  DeterministicStateInitAction,
   FunctionCallAction,
   SignedDelegateAction,
   StakeAction,
@@ -323,6 +325,76 @@ export function signedDelegate(
         publicKey: publicKeyToZorsh(delegateAction.publicKey),
       },
       signature: signatureToZorsh(signature),
+    },
+  }
+}
+
+// ==================== NEP-616 Deterministic Account Actions ====================
+
+/**
+ * Options for creating a StateInit action
+ */
+export interface StateInitOptions {
+  /**
+   * Code reference - either a code hash or account ID that published the global contract
+   */
+  code: { codeHash: string | Uint8Array } | { accountId: string }
+  /**
+   * Initial key-value pairs to populate in the contract's storage
+   * Keys and values should be Borsh-serialized bytes
+   */
+  data?: Map<Uint8Array, Uint8Array>
+  /**
+   * Amount to attach for storage costs (in yoctoNEAR)
+   */
+  deposit: bigint
+}
+
+/**
+ * Create a StateInit action for deploying a contract with a deterministically derived account ID.
+ *
+ * This enables NEP-616 deterministic AccountIds where the account ID is derived from:
+ * `"0s" + hex(keccak256(borsh(state_init))[12..32])`
+ *
+ * @param options - StateInit configuration
+ * @returns DeterministicStateInitAction
+ *
+ * @example
+ * ```typescript
+ * // Deploy from a published global contract by account ID
+ * stateInit({
+ *   code: { accountId: "publisher.near" },
+ *   deposit: BigInt("1000000000000000000000000"), // 1 NEAR
+ * })
+ *
+ * // Deploy from a code hash
+ * stateInit({
+ *   code: { codeHash: hashBytes },
+ *   deposit: BigInt("1000000000000000000000000"),
+ * })
+ * ```
+ */
+export function stateInit(
+  options: StateInitOptions,
+): DeterministicStateInitAction {
+  let codeIdentifier: { CodeHash: number[] } | { AccountId: string }
+
+  if ("accountId" in options.code) {
+    codeIdentifier = { AccountId: options.code.accountId }
+  } else {
+    const hashBytes = parseCodeHash(options.code.codeHash)
+    codeIdentifier = { CodeHash: Array.from(hashBytes) as number[] }
+  }
+
+  return {
+    deterministicStateInit: {
+      stateInit: {
+        V1: {
+          code: codeIdentifier,
+          data: options.data ?? new Map(),
+        },
+      },
+      deposit: options.deposit,
     },
   }
 }
